@@ -8,6 +8,9 @@ numpy = "*"
 nibabel = "*"
 tqdm = "*"
 "flake8" = "*"
+python-dotenv = "*"
+matplotlib = "*"
+sklearn = "*"
 
 [dev-packages]
 
