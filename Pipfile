@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+numpy = "*"
+nibabel = "*"
+tqdm = "*"
+"flake8" = "*"
+python-dotenv = "*"
+matplotlib = "*"
+sklearn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.6"
