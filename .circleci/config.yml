@@ -1,0 +1,43 @@
+jobs:
+  build-and-test:
+    docker:
+      - image: python:3.6
+    working_directory: /tmp/app
+    environment:
+      TZ: /usr/share/zoneinfo/Asia/Taipei
+      # https://docs.pipenv.org/advanced.html#custom-virtual-environment-location
+      WORKON_HOME: /tmp/venv
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - brain-tumor-segmentation-cache-180919-{{ checksum "Pipfile.lock" }}
+            - brain-tumor-segmentation-180919
+      - run:
+          name: Install pipenv
+          command: pip install pipenv
+      - run:
+          name: install dependencies
+          command: |
+            pipenv run pip install -U Cython
+            pipenv install --dev
+      - save_cache:
+          key: brain-tumor-segmentation-cache-180919-{{ checksum "Pipfile.lock" }}
+          paths:
+          - /temp/venv
+      - run:
+          name: Flake8
+          command: pipenv run python -m flake8 .
+      - run:
+          name: Test
+          command: pipenv run python -m unittest
+
+workflows:
+  version: 2
+  build-and-test-then-distribute:
+    jobs:
+      - build-and-test:
+          filters:
+            tags:
+              only: /.*/
+
