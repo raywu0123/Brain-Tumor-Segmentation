@@ -1,5 +1,4 @@
-
-def main():
+def readfile():
     lines = []
     with open('./file_list.txt', 'r') as file:
         lines = file.readlines()
@@ -9,6 +8,10 @@ def main():
                 lines[line_n] = lines[line_n][6]
             else:
                 lines[line_n] = lines[line_n][5]
+    return lines
+
+
+def classify(lines):
     AX_C = 0
     AX = 0
     mra = 0
@@ -51,6 +54,11 @@ def main():
                     break
         lines[i] = []
     print(AX, AX_C)
+
+
+def main():
+    lines = readfile()
+    classify(lines)
 
 
 if __name__ == '__main__':
