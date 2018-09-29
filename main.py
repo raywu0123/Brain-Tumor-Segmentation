@@ -30,20 +30,17 @@ def flow(
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
-    # (x_train, y_train), (x_test, y_test) = data_provider.get_training_data()
-    # model.fit(
-    #     training_data=(x_train, y_train),
-    #     validation_data=(x_test, y_test),
-    #     **fit_hyper_parameters,
-    # )
-    #
-    # prediction = model.predict(x_test)
-    # metric = MetricClass(
-    #     prediction,
-    #     y_test,
-    # )
-    #
-    # return metric
+    if args.use_generator:
+        model.fit_generator(
+            training_data_generator=data_provider.training_data_generator,
+            validation_data_generator=data_provider.testing_data_generator,
+            **fit_hyper_parameters,
+        )
+    else:
+        model.fit(
+            training_data=data_provider.get_training_data(),
+            validation_data=data_provider.get_testing_data(),
+        )
 
 
 def main():

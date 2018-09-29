@@ -16,6 +16,14 @@
         ]
     },
     "default": {
+        "bistiming": {
+            "hashes": [
+                "sha256:2f3684827a7610f6cafed0eb502c296c0d95ef324c966124f04d6fd0998cddec",
+                "sha256:e8bd0aa748838df38f50296b008b2e0e799b4be491f801808d12aa20ec73d872"
+            ],
+            "index": "pypi",
+            "version": "==0.1.1"
+        },
         "cycler": {
             "hashes": [
                 "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d",

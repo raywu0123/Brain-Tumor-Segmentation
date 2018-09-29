@@ -1,19 +1,92 @@
+import os
+from functools import partial
+
+# from bistiming import SimpleTimer
+from tqdm import tqdm
+import nibabel as nib
+from dotenv import load_dotenv
+import numpy as np
+np.random.seed = 0
+
 from .base import DataInterface
 
 
-class NTUMRI(DataInterface):
+load_dotenv('./.env')
+NTU_MRI_DIR = os.environ.get('NTU_MRI_DIR')
+
+
+class NTU_MRI(DataInterface):
     def __init__(self):
-        self.description = 'NTUMRI'
+        self.img_channels = 1
+        self.img_depth = 200
+        self.img_height = self.img_width = 200
+        self.metadata_dim = 0
+
+        self.description = 'NTU_MRI'
+        self.image_path = os.path.join(NTU_MRI_DIR, 'image')
+        self.label_path = os.path.join(NTU_MRI_DIR, 'label')
+
+        self.all_ids = os.listdir(self.image_path)
+        self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
+        self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
+
+    def _get_image_and_label(self, data_id):
+        img_path = os.path.join(self.image_path, data_id)
+        label_path = os.path.join(self.label_path, data_id)
+        image = nib.load(img_path).get_fdata()
+        label = nib.load(label_path).get_fdata()
+        return image, label
+
+    def _data_generator(self, data_ids, batch_size):
+        selected_ids = np.random.choice(data_ids, batch_size)
+        batch_img = np.empty((
+            batch_size,
+            self.img_channels,
+            self.img_depth,
+            self.img_height,
+            self.img_width,
+        ))
+        batch_label = np.empty_like(batch_img)
+
+        for idx, data_id in enumerate(selected_ids):
+            batch_img[idx], batch_label[idx] = self._get_image_and_label(data_id)
+        return {'img': batch_img, 'label': batch_label}
+
+    @property
+    def testing_data_generator(self):
+        return partial(self._data_generator, self.test_ids)
+
+    @property
+    def training_data_generator(self):
+        return partial(self._data_generator, self.train_ids)
+
+    def _get_data(self, data_ids):
+        batch_img = np.empty((
+            len(data_ids),
+            self.img_channels,
+            self.img_depth,
+            self.img_height,
+            self.img_width,
+        ))
+        batch_label = np.empty_like(batch_img)
+
+        print('Loading data...')
+        for idx, data_id in tqdm(enumerate(data_ids)):
+            batch_img[idx], batch_label[idx] = self._get_image_and_label(data_id)
+        return {'img': batch_img, 'label': batch_label}
 
     def get_training_data(self):
-        # TODO
-        pass
+        return self._get_data(self.train_ids)
+
+    def get_testing_data(self):
+        return self._get_data(self.test_ids)
 
     def get_data_format(self):
         data_format = {
-            "channels": 1,
-            "depth": 160,
-            "height": 217,
-            "width": 217,
+            "channels": self.img_channels,
+            "depth": self.img_depth,
+            "height": self.img_height,
+            "width": self.img_width,
+            "metadata_dim": self.metadata_dim,
         }
         return data_format

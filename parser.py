@@ -22,5 +22,10 @@ def brain_tumor_argparse():
         help='The global random seed. [5566]',
         default=5566,
     )
-    parser.set_defaults(do_comet=False)
+    parser.add_argument(
+        '-g',
+        '--use_generator',
+        action='store_true',
+        help='Use generator when RAM isn\'t large enough',
+    )
     return parser
