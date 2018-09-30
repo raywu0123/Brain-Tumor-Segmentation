@@ -1,5 +1,8 @@
 import os
 from sys import argv
+
+import numpy as np
+
 from image_utils import ImageProcessor, save_array_to_nii
 
 
@@ -32,6 +35,14 @@ if __name__ == '__main__':
                 label_path=label_path,
                 mask_path=mask_path,
                 file_id=file_id,
+        )
+        np.save(
+            os.path.join(result_dir, 'image', f'{file_id}.npy'),
+            preprocessed_image,
+        )
+        np.save(
+            os.path.join(result_dir, 'label', f'{file_id}.npy'),
+            preprocessed_label,
         )
         save_array_to_nii(
             preprocessed_image,
