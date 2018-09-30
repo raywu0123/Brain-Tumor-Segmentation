@@ -71,7 +71,7 @@ class NTU_MRI(DataInterface):
         batch_label = np.empty_like(batch_img)
 
         print('Loading data...')
-        for idx, data_id in tqdm(enumerate(data_ids)):
+        for idx, data_id in enumerate(tqdm(data_ids)):
             batch_img[idx], batch_label[idx] = self._get_image_and_label(data_id)
         return {'img': batch_img, 'label': batch_label}
 
