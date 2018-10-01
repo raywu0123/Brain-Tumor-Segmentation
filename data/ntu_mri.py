@@ -35,6 +35,10 @@ class NTU_MRI(DataInterface):
         label_path = os.path.join(self.label_path, data_id)
         image = nib.load(img_path).get_fdata()
         label = nib.load(label_path).get_fdata()
+        
+        # Dims: (N, C, D, H, W)
+        image = np.transpose(image, (2, 0, 1))
+        label = np.transpose(label, (2, 0, 1))
         return image, label
 
     def _data_generator(self, data_ids, batch_size):
