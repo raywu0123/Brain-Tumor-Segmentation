@@ -1,3 +1,5 @@
+from functools import partial
+
 from .toy_model import ToyModel
 
 
@@ -10,10 +12,11 @@ DEFAULT_TRAINING_PARAM = {
 
 MODELS = {
     'toy_model': (
-        ToyModel,
-        {
-            'num_units': 32,
-        },
+        partial(
+            ToyModel,
+            {
+                'num_units': 32,
+            }),
         DEFAULT_TRAINING_PARAM,
     ),
 }

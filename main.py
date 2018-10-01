@@ -45,9 +45,9 @@ def flow(
 
 def main():
     data_provider = DataProviders[args.data_provider_id]
-    get_model, model_hyper_parameters, fit_hyper_parameters = MODELS[args.model_id]
+    get_model, fit_hyper_parameters = MODELS[args.model_id]
     model = get_model(
-        **model_hyper_parameters, **data_provider.get_data_format(),
+        **data_provider.get_data_format(),
     )
 
     time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
