@@ -1,6 +1,6 @@
-from .ntu_mri import NTUMRI
+from .ntu_mri import NTU_MRI
 
 
 DataProviders = {
-    'ntu_mri': NTUMRI(),
+    'ntu_mri': NTU_MRI(),
 }

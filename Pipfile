@@ -12,6 +12,7 @@ python-dotenv = "*"
 matplotlib = "*"
 sklearn = "*"
 medpy = "*"
+bistiming = "*"
 
 [dev-packages]
 
