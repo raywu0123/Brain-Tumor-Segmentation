@@ -33,9 +33,10 @@ class NTU_MRI(DataInterface):
     def _get_image_and_label(self, data_id):
         img_path = os.path.join(self.image_path, data_id)
         label_path = os.path.join(self.label_path, data_id)
-        image = nib.load(img_path).get_fdata()
-        label = nib.load(label_path).get_fdata()
-
+        # image = nib.load(img_path).get_fdata()
+        # label = nib.load(label_path).get_fdata()
+        image = np.load(img_path)
+        label = np.load(label_path)
         # Dims: (N, C, D, H, W)
         image = np.transpose(image, (2, 0, 1))
         label = np.transpose(label, (2, 0, 1))

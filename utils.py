@@ -1,5 +1,5 @@
 import numpy as np
-import medpy
+from medpy import metric as medmetric
 
 
 class MetricClass:
@@ -20,12 +20,12 @@ class MetricClass:
             'dice': self.dice,
             'sensitivity': self.sensitivity,
             'precision': self.precision,
-            'assd': self.assd,
+            # 'assd': self.assd,
         }
 
     def accuracy(self):
-        acc = np.mean(
-            np.logical_and(
+        acc = 1 - np.mean(
+            np.logical_xor(
                 self.pred,
                 self.tar
             )
@@ -33,19 +33,19 @@ class MetricClass:
         return acc
 
     def dice(self):
-        return medpy.metric.dc(self.pred, self.tar)
+        return medmetric.dc(self.pred, self.tar)
 
     def sensitivity(self):
-        return medpy.metric.sensitivity(self.pred, self.tar)
+        return medmetric.sensitivity(self.pred, self.tar)
 
     def precision(self):
-        return medpy.metric.precision(self.pred, self.tar)
+        return medmetric.precision(self.pred, self.tar)
 
     def hausdorff_distance(self):
-        return medpy.metric.hd(self.pred, self.tar)
+        return medmetric.hd(self.pred, self.tar)
 
     def assd(self):
-        return medpy.metric.assd(self.pred, self.tar)
+        return medmetric.assd(self.pred, self.tar)
 
     def all_metrics(self):
         results = {metric: metric_func() for (metric, metric_func) in self.do_all_metrics.items()}

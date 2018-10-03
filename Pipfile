@@ -13,6 +13,7 @@ matplotlib = "*"
 sklearn = "*"
 medpy = "*"
 bistiming = "*"
+torch = "==0.4.0"
 
 [dev-packages]
 
