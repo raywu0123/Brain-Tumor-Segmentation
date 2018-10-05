@@ -2,8 +2,8 @@ import os
 from functools import partial
 
 # from bistiming import SimpleTimer
+# import nibabel as nib
 from tqdm import tqdm
-import nibabel as nib
 from dotenv import load_dotenv
 import numpy as np
 np.random.seed = 0
