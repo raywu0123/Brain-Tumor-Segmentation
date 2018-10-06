@@ -13,11 +13,13 @@ class MetricClass:
                 f"pred.shape should be eqaul to tar.shape, "
                 f"got pred = {pred.shape} and tar = {tar.shape}",
             )
-        self.pred = pred
+        self.prob_pred = pred
+        self.pred = (pred > 0.5).astype(int)
         self.tar = tar
         self.do_all_metrics = {
             'accuracy': self.accuracy,
-            'dice': self.dice,
+            'dice-score': self.dice_score,
+            'dice-loss': self.dice_loss,
             'sensitivity': self.sensitivity,
             'precision': self.precision,
             # 'assd': self.assd,
@@ -32,7 +34,12 @@ class MetricClass:
         )
         return acc
 
-    def dice(self):
+    def dice_loss(self):
+        intersection = self.tar * self.prob_pred
+        dice_loss = (2 * np.sum(intersection) + 1) / (np.sum(self.prob_pred) + np.sum(self.tar) + 1)
+        return dice_loss
+
+    def dice_score(self):
         return medmetric.dc(self.pred, self.tar)
 
     def sensitivity(self):

@@ -21,6 +21,7 @@ class ToyModel(Segmentation2DModelBase):
             num_units: [int] = (32, 32, 64, 64, 128),
             pooling_layer_num: [int] = (1, 3),
             kernel_size: int = 3,
+            lr: float = 1e-4,
         ):
         self.num_units = num_units
         self.data_channels = channels
@@ -29,6 +30,7 @@ class ToyModel(Segmentation2DModelBase):
         self.data_width = width
         self.metadata_dim = metadata_dim
         self.true_ratio = 1e-3
+        self.comet_experiment = None
 
         self.model = ToyModelNet(
             image_chns=self.data_channels,
@@ -38,7 +40,7 @@ class ToyModel(Segmentation2DModelBase):
             pooling_layer_num=pooling_layer_num,
             kernel_size=kernel_size,
         )
-        self.opt = optim.Adam(params=self.model.parameters())
+        self.opt = optim.Adam(params=self.model.parameters(), lr=lr)
         if torch.cuda.is_available():
             self.model.cuda()
 
@@ -53,15 +55,20 @@ class ToyModel(Segmentation2DModelBase):
             # brightness_range=(0.8, 1.2),
         )
 
+    def _set_comet_experiment(self, experiment):
+        self.comet_experiment = experiment
+
     def fit_generator(self, training_data_generator, validation_data_generator, **kwargs):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
 
         verbose_epoch_num = kwargs['verbose_epoch_num']
+        if 'experiment' in kwargs:
+            self._set_comet_experiment(kwargs['experiment'])
+
         for i_epoch in range(epoch_num):
             losses, dice_scores = self.train_on_batch(training_data_generator, batch_size)
-
             if i_epoch % verbose_epoch_num == 0:
                 print(
                     f'epoch: {i_epoch}',
@@ -69,9 +76,21 @@ class ToyModel(Segmentation2DModelBase):
                     f', dice_score: {np.mean(dice_scores)}',
                     f', true_ratio: {self.true_ratio}',
                 )
+
                 self.model.eval()
-                self._validate(validation_data_generator, batch_size, verbose_epoch_num // 10)
+                metrics = self._validate(
+                    validation_data_generator, batch_size, verbose_epoch_num // 10
+                )
                 self.model.train()
+                if self.comet_experiment is not None:
+                    self.comet_experiment.log_multiple_metrics({
+                        'bce_loss': np.mean(losses),
+                        'dice_score': np.mean(dice_scores),
+                    },
+                        prefix='training')
+                    self.comet_experiment.log_multiple_metrics(
+                        metrics, prefix='validation', step=i_epoch
+                    )
 
     def train_on_batch(self, training_data_generator, batch_size):
         image, label = self._get_data_with_generator(
@@ -99,13 +118,12 @@ class ToyModel(Segmentation2DModelBase):
             m1 = pred.view(batch_size, -1)
             m2 = batch_label.view(batch_size, -1)
             intersection = (m1 * m2)
-            m1 = torch.sum(m1, dim=1)
-            m2 = torch.sum(m2, dim=1)
-            intersection = torch.sum(intersection, dim=1)
+            m1 = torch.sum(m1)
+            m2 = torch.sum(m2)
+            intersection = torch.sum(intersection)
 
-            dice_score = 2. * (intersection + 1) / (m1 + m2 + 1)
-            dice_score = dice_score.sum() / batch_size
-            dice_score += 1e-8
+            dice_score = (2. * intersection + 1) / (m1 + m2 + 1)
+            # dice_score = dice_score.sum() / batch_size
             # total_loss = bce_loss
             # total_loss = bce_loss - dice_score
             # total_loss = 1 - dice_score
@@ -146,12 +164,8 @@ class ToyModel(Segmentation2DModelBase):
 
         label = np.asarray(label_buff)
         pred = np.asarray(pred_buff)
-        pred = (pred > 0.5).astype(int)
         print(np.mean(pred), np.mean(label))
-        MetricClass(
-            pred,
-            label,
-        ).all_metrics()
+        return MetricClass(pred, label).all_metrics()
 
     def _get_data_with_generator(self, generator, batch_size):
         batch_data = generator(batch_size=batch_size)

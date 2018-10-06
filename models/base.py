@@ -7,3 +7,9 @@ class Segmentation2DModelBase:
 
     def predict(self, x_test, **kwargs):
         raise NotImplementedError('predict not implemented')
+
+    def save(self):
+        raise NotImplementedError('save not implemented')
+
+    def load(self):
+        raise NotImplementedError('load not implemented')

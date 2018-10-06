@@ -16,6 +16,7 @@ bistiming = "*"
 torch = "==0.4.0"
 keras = "*"
 tensorflow-gpu = "*"
+comet-ml = "*"
 
 [dev-packages]
 

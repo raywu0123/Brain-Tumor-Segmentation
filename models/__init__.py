@@ -25,7 +25,7 @@ MODELS = {
             },
         ),
         {
-            'batch_size': 1,
+            'batch_size': 25,
             'epoch_num': 60000,
             'verbose_epoch_num': 10,
         },
