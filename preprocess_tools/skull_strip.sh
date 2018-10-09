@@ -7,7 +7,8 @@ mkdir -p $result_dir
 mkdir -p "$result_dir/image"
 mkdir -p "$result_dir/mask"
 
-for filepath in /shares/Public/challenge.0924/image/*; do
+data_dir=$3
+for filepath in $3/image/*; do
 	filename=$(basename "$filepath" "")	
 	echo $filename
 	$bse_dir -i $filepath \
