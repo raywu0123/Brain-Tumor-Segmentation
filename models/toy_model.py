@@ -52,6 +52,7 @@ class ToyModel(Segmentation2DModelBase):
             channels,
             height,
             width,
+            mode='albumentations',
         )
 
         self.model = ToyModelNet(

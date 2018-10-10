@@ -19,6 +19,8 @@ comet-ml = "*"
 tensorflow = "*"
 imgaug = "*"
 opencv-python = "*"
+augmentor = "*"
+albumentations = "*"
 
 [dev-packages]
 
