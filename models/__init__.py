@@ -1,7 +1,7 @@
 from functools import partial
 
 from .toy_model import ToyModel
-
+from .Unet import UNet
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
@@ -29,5 +29,15 @@ MODELS = {
             'epoch_num': 60000,
             'verbose_epoch_num': 10,
         },
+    ),
+    'UNet': (
+        partial(
+            UNet,
+        ),
+        {
+            'batch_size': 25,
+            'epoch_num': 60000,
+            'verbose_epoch_num': 10,
+        }
     ),
 }
