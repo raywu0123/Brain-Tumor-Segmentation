@@ -154,8 +154,8 @@ class ToyModel(Segmentation2DModelBase):
         batch_label = get_2d_from_3d(batch_label)
         batch_image = normalize_image(batch_image)
 
-        batch_volume, batch_label = co_shuffle(batch_volume, batch_label)
-        batch_image, batch_label = self.image_augmentor.co_transfrom(batch_image, batch_label)
+        batch_image, batch_label = co_shuffle(batch_image, batch_label)
+        batch_image, batch_label = self.image_augmentor.co_transform(batch_image, batch_label)
         return batch_image, batch_label
 
     def _predict_on_2d_images(self, image, batch_size):

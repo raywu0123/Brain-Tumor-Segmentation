@@ -17,6 +17,8 @@ torch = "==0.4.0"
 keras = "*"
 comet-ml = "*"
 tensorflow = "*"
+imgaug = "*"
+opencv-python = "*"
 
 [dev-packages]
 
