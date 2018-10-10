@@ -103,6 +103,7 @@ class ToyModel(Segmentation2DModelBase):
             training_data_generator,
             1,
         )
+        image, label = self.image_augmentor.co_transform(image, label)
         losses = []
         dice_scores = []
 
@@ -156,7 +157,6 @@ class ToyModel(Segmentation2DModelBase):
         batch_image = normalize_image(batch_image)
 
         batch_image, batch_label = co_shuffle(batch_image, batch_label)
-        batch_image, batch_label = self.image_augmentor.co_transform(batch_image, batch_label)
         return batch_image, batch_label
 
     def _predict_on_2d_images(self, image, batch_size):
