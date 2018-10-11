@@ -57,17 +57,18 @@ def flow(
 
 
 def main():
-    data_provider = DataProviders[args.data_provider_id]
-    get_model, fit_hyper_parameters = MODELS[args.model_id]
-    model = get_model(
-        **data_provider.get_data_format(),
-    )
-
     time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     os.environ['EXP_ID'] = \
         f'{args.model_id}_on_{args.data_provider_id}_{time_stamp}'
     os.mkdir(os.path.join(RESULT_DIR, os.environ.get('EXP_ID')))
     print('EXP_ID:', os.environ.get('EXP_ID'))
+
+    data_provider = DataProviders[args.data_provider_id]
+    get_model, fit_hyper_parameters = MODELS[args.model_id]
+
+    model = get_model(
+        **data_provider.get_data_format(),
+    )
 
     if args.do_comet:
         experiment.log_multiple_params(vars(args))
