@@ -28,4 +28,25 @@ def brain_tumor_argparse():
         action='store_true',
         help='Use generator when RAM isn\'t large enough',
     )
+    parser.add_argument(
+        '--comet',
+        dest='do_comet',
+        action='store_true',
+        help='Use comet-ml to document the info.',
+    )
+    parser.add_argument(
+        '-cop',
+        '--comet_project',
+        type=str,
+        help='comet ml project name',
+        default='braintumorbaba',
+    )
+    parser.add_argument(
+        '-cow',
+        '--comet_workspace',
+        type=str,
+        help='comet ml workspace name',
+        default='raywu0123',
+    )
+    parser.set_defaults(do_comet=False)
     return parser

@@ -1,5 +1,5 @@
 import numpy as np
-import medpy
+from medpy import metric as medmetric
 
 
 class MetricClass:
@@ -13,39 +13,46 @@ class MetricClass:
                 f"pred.shape should be eqaul to tar.shape, "
                 f"got pred = {pred.shape} and tar = {tar.shape}",
             )
-        self.pred = pred
+        self.prob_pred = pred
+        self.pred = (pred > 0.5).astype(int)
         self.tar = tar
         self.do_all_metrics = {
             'accuracy': self.accuracy,
-            'dice': self.dice,
+            'dice-score': self.dice_score,
+            'dice-loss': self.dice_loss,
             'sensitivity': self.sensitivity,
             'precision': self.precision,
-            'assd': self.assd,
+            # 'assd': self.assd,
         }
 
     def accuracy(self):
-        acc = np.mean(
-            np.logical_and(
+        acc = 1 - np.mean(
+            np.logical_xor(
                 self.pred,
                 self.tar
             )
         )
         return acc
 
-    def dice(self):
-        return medpy.metric.dc(self.pred, self.tar)
+    def dice_loss(self):
+        intersection = self.tar * self.prob_pred
+        dice_loss = (2 * np.sum(intersection) + 1) / (np.sum(self.prob_pred) + np.sum(self.tar) + 1)
+        return dice_loss
+
+    def dice_score(self):
+        return medmetric.dc(self.pred, self.tar)
 
     def sensitivity(self):
-        return medpy.metric.sensitivity(self.pred, self.tar)
+        return medmetric.sensitivity(self.pred, self.tar)
 
     def precision(self):
-        return medpy.metric.precision(self.pred, self.tar)
+        return medmetric.precision(self.pred, self.tar)
 
     def hausdorff_distance(self):
-        return medpy.metric.hd(self.pred, self.tar)
+        return medmetric.hd(self.pred, self.tar)
 
     def assd(self):
-        return medpy.metric.assd(self.pred, self.tar)
+        return medmetric.assd(self.pred, self.tar)
 
     def all_metrics(self):
         results = {metric: metric_func() for (metric, metric_func) in self.do_all_metrics.items()}

@@ -13,6 +13,10 @@ matplotlib = "*"
 sklearn = "*"
 medpy = "*"
 bistiming = "*"
+torch = "==0.4.0"
+keras = "*"
+comet-ml = "*"
+tensorflow = "*"
 
 [dev-packages]
 
