@@ -22,6 +22,11 @@ class DataInterface:
             f'{self.__class__.__name__} does not implement get_testing_data'
         )
 
+    def get_all_data(self):
+        raise NotImplementedError(
+            f'{self.__class__.__name__} does not implement get_all_data'
+        )
+
     @property
     def description(self):
         return self._description or None
