@@ -30,7 +30,7 @@ def flow(
     model.load(model_path)
 
     test_volumes = data_provider.get_testing_data()
-    pred = model.predict(test_volumes, fit_hyper_parameters)
+    pred = model.predict(test_volumes['img'], fit_hyper_parameters)
     np.save(pred, model_path)
 
 
