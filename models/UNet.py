@@ -84,10 +84,23 @@ class UNet_structure(nn.Module):
         return x
 
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+class conv_n_times(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, conv_times):
+        super(conv_n_times, self).__init__()
+        self.conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size, padding=kernel_size // 2)
+        self.batchnorm = nn.BatchNorm2d(out_ch)
+        self.conv_times = conv_times
+=======
+>>>>>>> 088f52d... UNet
 class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size):
         super(double_conv, self).__init__()
         self.conv = nn.Sequential(
+<<<<<<< HEAD
             nn.Conv2d(in_ch, out_ch, kernel_size, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
@@ -95,6 +108,16 @@ class double_conv(nn.Module):
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
+=======
+            nn.Conv2d(in_ch, out_ch, kernel_size, padding="same"),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, kernel_size, padding="same"),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+>>>>>>> f5f557a... fix
+>>>>>>> 088f52d... UNet
 
     def forward(self, x):
         x = self.conv(x)
