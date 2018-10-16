@@ -33,7 +33,16 @@ MODELS = {
     'UNet': (
         partial(
             UNet,
+            **{
+                'floor_num': 4,
+                'channel_num': 64,
+                'conv_times': 2,
+            },
         ),
-        DEFAULT_TRAINING_PARAM,
+        {
+            'batch_size': 25,
+            'epoch_num': 60000,
+            'verbose_epoch_num': 10,
+        },
     ),
 }
