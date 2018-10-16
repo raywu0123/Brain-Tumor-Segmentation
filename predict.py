@@ -1,4 +1,3 @@
-import os
 from parser import brain_tumor_argparse
 import numpy as np
 from dotenv import load_dotenv
@@ -14,6 +13,7 @@ from data.data_providers import DataProviders
         parse_args=False,
     )
 """
+
 
 def flow(
         data_provider,
@@ -32,6 +32,7 @@ def flow(
     test_volumes = data_provider.get_testing_data()
     pred = model.predict(test_volumes, fit_hyper_parameters)
     np.save(pred, model_path)
+
 
 def predict(args):
     data_provider = DataProviders[args.data_provider_id]
@@ -52,6 +53,7 @@ def predict(args):
         model_path=model_path
     )
 
+
 def main():
     load_dotenv('./.env')
     """RESULT_DIR = os.environ.get('RESULT_DIR')
@@ -67,6 +69,7 @@ def main():
     args = parser.parse_args()
 
     predict(args)
+
 
 if __name__ == '__main__':
     main()
