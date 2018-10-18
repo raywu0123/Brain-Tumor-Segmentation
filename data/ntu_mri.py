@@ -31,31 +31,24 @@ class NTU_MRI(DataInterface):
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
     def _get_image_and_label(self, data_id):
-        img_path = os.path.join(self.image_path, data_id)
-        label_path = os.path.join(self.label_path, data_id)
-        # image = nib.load(img_path).get_fdata()
-        # label = nib.load(label_path).get_fdata()
-        image = np.load(img_path)
-        label = np.load(label_path)
         # Dims: (N, C, D, H, W)
+        img_path = os.path.join(self.image_path, data_id)
+        # image = nib.load(img_path).get_fdata()
+        image = np.load(img_path)
         image = np.transpose(image, (2, 0, 1))
-        label = np.transpose(label, (2, 0, 1))
+
+        label_path = os.path.join(self.label_path, data_id)
+        if os.path.exists(label_path):
+            # label = nib.load(label_path).get_fdata()
+            label = np.load(label_path)
+            label = np.transpose(label, (2, 0, 1))
+        else:
+            label = None
         return image, label
 
     def _data_generator(self, data_ids, batch_size):
         selected_ids = np.random.choice(data_ids, batch_size)
-        batch_img = np.empty((
-            batch_size,
-            self.img_channels,
-            self.img_depth,
-            self.img_height,
-            self.img_width,
-        ))
-        batch_label = np.empty_like(batch_img)
-
-        for idx, data_id in enumerate(selected_ids):
-            batch_img[idx], batch_label[idx] = self._get_image_and_label(data_id)
-        return {'img': batch_img, 'label': batch_label}
+        return self._get_data(selected_ids)
 
     @property
     def testing_data_generator(self):
@@ -66,25 +59,28 @@ class NTU_MRI(DataInterface):
         return partial(self._data_generator, self.train_ids)
 
     def _get_data(self, data_ids):
-        batch_img = np.empty((
+        batch_volume = np.empty((
             len(data_ids),
             self.img_channels,
             self.img_depth,
             self.img_height,
             self.img_width,
         ))
-        batch_label = np.empty_like(batch_img)
+        batch_label = np.empty_like(batch_volume)
 
         print('Loading data...')
         for idx, data_id in enumerate(tqdm(data_ids)):
-            batch_img[idx], batch_label[idx] = self._get_image_and_label(data_id)
-        return {'img': batch_img, 'label': batch_label}
+            batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
+        return {'volume': batch_volume, 'metadata': None, 'label': batch_label}
 
     def get_training_data(self):
         return self._get_data(self.train_ids)
 
     def get_testing_data(self):
         return self._get_data(self.test_ids)
+
+    def get_all_data(self):
+        return self._get_data(self.train_ids + self.test_ids)
 
     def get_data_format(self):
         data_format = {

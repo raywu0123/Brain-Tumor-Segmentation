@@ -29,7 +29,7 @@ class ModelBase:
     def fit_generator(self, training_data_generator, validation_data_generator, **kwargs):
         raise NotImplementedError('fit_generator not implemented')
 
-    def predict(self, x_test, **kwargs):
+    def predict(self, test_data, **kwargs):
         raise NotImplementedError('predict not implemented')
 
     def save(self):
@@ -85,6 +85,7 @@ class Model2DBase(ModelBase):
                     f', dice_score: {np.mean(dice_scores)}',
                 )
 
+                self.save()
                 metrics = self._validate(
                     validation_data_generator, batch_size, verbose_epoch_num // 10
                 )
@@ -151,7 +152,7 @@ class Model2DBase(ModelBase):
     @staticmethod
     def _get_data_with_generator(generator, batch_size):
         batch_data = generator(batch_size=batch_size)
-        batch_volume, batch_label = batch_data['img'], batch_data['label']
+        batch_volume, batch_label = batch_data['volume'], batch_data['label']
 
         batch_image = get_2d_from_3d(batch_volume)
         batch_label = get_2d_from_3d(batch_label)
@@ -178,8 +179,9 @@ class Model2DBase(ModelBase):
         pred_buff = np.asarray(pred_buff)
         return pred_buff
 
-    def predict(self, test_volumes, **kwargs):
+    def predict(self, test_data, **kwargs):
         batch_size = kwargs['batch_size']
+        test_volumes = test_data['volume']
         test_images = get_2d_from_3d(test_volumes)
         test_images = normalize_image(test_images)
         pred = self._predict_on_2d_images(test_images, batch_size)
