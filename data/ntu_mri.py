@@ -58,7 +58,7 @@ class NTU_MRI(DataInterface):
     def training_data_generator(self):
         return partial(self._data_generator, self.train_ids)
 
-    def _get_data(self, data_ids):
+    def _get_data(self, data_ids, verbose=False):
         batch_volume = np.empty((
             len(data_ids),
             self.img_channels,
@@ -68,19 +68,23 @@ class NTU_MRI(DataInterface):
         ))
         batch_label = np.empty_like(batch_volume)
 
-        print('Loading data...')
-        for idx, data_id in enumerate(tqdm(data_ids)):
+        iterator = data_ids
+        if verbose:
+            print('Loading data...')
+            iterator = tqdm(data_ids)
+
+        for idx, data_id in enumerate(iterator):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
         return {'volume': batch_volume, 'metadata': None, 'label': batch_label}
 
     def get_training_data(self):
-        return self._get_data(self.train_ids)
+        return self._get_data(self.train_ids, verbose=True)
 
     def get_testing_data(self):
-        return self._get_data(self.test_ids)
+        return self._get_data(self.test_ids, verbose=True)
 
     def get_all_data(self):
-        return self._get_data(self.train_ids + self.test_ids)
+        return self._get_data(self.train_ids + self.test_ids, verbose=True)
 
     def get_data_format(self):
         data_format = {
