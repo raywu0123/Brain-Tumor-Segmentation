@@ -1,5 +1,5 @@
 import os
-
+import nibabel as nib
 from parser import brain_tumor_argparse
 import numpy as np
 from dotenv import load_dotenv
@@ -28,31 +28,35 @@ def flow(
 
     """if args.do_comet:
         fit_hyper_parameters['experiment'] = experiment"""
-
+    print(fit_hyper_parameters)
     model.load(model_path)
+    fit_hyper_parameters['batch_size'] = 20
 
-    test_volumes = data_provider.get_all_data()
+    test_volumes = data_provider.get_testing_data()
     del test_volumes['label']
-    pred = model.predict(test_volumes, fit_hyper_parameters)
-    ids = data_provider.train_ids + data_provider.test_ids
+
+    pred = model.predict(test_volumes, **fit_hyper_parameters)
+    print("######prediction ends######")
+    ids = data_provider.test_ids
 
     prediction_path = os.path.join(model_path, "prediction")
-    os.mkdir(prediction_path)
 
     #np.save(pred, model_path)
     for idx, id in enumerate(ids):
-        batch_size = fit_hyper_parameters[batch_size]
-        pred = np.reshape(pred, (len(idx), -1, -1, -1, -1))
-        pred = np.transpose(pred, 1, 2, 0)
+        batch_size = fit_hyper_parameters['batch_size']
+        pred = np.reshape(pred, (len(ids), 200, 200, 200))
+        pred = np.transpose(pred, (0, 2, 3, 1))
         output_image = pred[idx]
-        np.save(output_image, prediction_path + id + 'npy')
-
+        path = os.path.join(prediction_path, id)
+        image = nib.Nifti1Image(output_image, affine=np.eye(4))
+        nib.save(image, path + 'nii.gz')
+        print(id)
 
 def predict(args):
     data_provider = DataProviders[args.data_provider_id]
     get_model, fit_hyper_parameters = MODELS[args.model_id]
     model_path = args.model_path
-
+    print(data_provider)
     model = get_model(
         **data_provider.get_data_format(),
     )
