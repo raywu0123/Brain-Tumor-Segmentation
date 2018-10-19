@@ -1,3 +1,5 @@
+import os
+
 from parser import brain_tumor_argparse
 import numpy as np
 from dotenv import load_dotenv
@@ -29,9 +31,21 @@ def flow(
 
     model.load(model_path)
 
-    test_volumes = data_provider.get_testing_data()
-    pred = model.predict(test_volumes['img'], fit_hyper_parameters)
-    np.save(pred, model_path)
+    test_volumes = data_provider.get_all_data()
+    del test_volumes['label']
+    pred = model.predict(test_volumes, fit_hyper_parameters)
+    ids = data_provider.train_ids + data_provider.test_ids
+
+    prediction_path = os.path.join(model_path, "prediction")
+    os.mkdir(prediction_path)
+
+    #np.save(pred, model_path)
+    for idx, id in enumerate(ids):
+        batch_size = fit_hyper_parameters[batch_size]
+        pred = np.reshape(pred, (len(idx), -1, -1, -1, -1))
+        pred = np.transpose(pred, 1, 2, 0)
+        output_image = pred[idx]
+        np.save(output_image, prediction_path + id + 'npy')
 
 
 def predict(args):
