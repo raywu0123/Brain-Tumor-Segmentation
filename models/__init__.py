@@ -5,9 +5,10 @@ from .u_net import UNet
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
-    'epoch_num': 60000,
+    'epoch_num': 1500 * 200,
     'verbose_epoch_num': 10,
 }
+
 
 MODELS = {
     'toy_model': (
@@ -25,8 +26,8 @@ MODELS = {
             },
         ),
         {
-            'batch_size': 25,
             **DEFAULT_TRAINING_PARAM,
+            'batch_size': 25,
         },
     ),
     'u_net': (
@@ -34,8 +35,8 @@ MODELS = {
             UNet,
         ),
         {
-            'batch_size': 25,
             **DEFAULT_TRAINING_PARAM,
+            'batch_size': 25,
         },
     ),
 }
