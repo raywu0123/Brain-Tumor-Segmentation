@@ -70,6 +70,9 @@ def main():
         **data_provider.get_data_format(),
     )
 
+    if args.checkpoint_dir is not None:
+        model.load(args.checkpoint_dir)
+
     if args.do_comet:
         experiment.log_multiple_params(vars(args))
 
