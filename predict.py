@@ -37,18 +37,19 @@ def flow(
 
     pred = model.predict(test_volumes, **fit_hyper_parameters)
     print("######prediction ends######")
-    ids = data_provider.test_ids
 
+    ids = data_provider.test_ids
+    pred = np.reshape(pred, (len(ids), 200, 200, 200))
+    pred = np.transpose(pred, (0, 2, 3, 1))
     prediction_path = os.path.join(model_path, "prediction")
+    if not os.path.exists(prediction_path):
+        os.mkdir(prediction_path)
 
     #np.save(pred, model_path)
     for idx, id in enumerate(ids):
-        batch_size = fit_hyper_parameters['batch_size']
-        pred = np.reshape(pred, (len(ids), 200, 200, 200))
-        pred = np.transpose(pred, (0, 2, 3, 1))
-        output_image = pred[idx]
+        image = pred[idx]
         path = os.path.join(prediction_path, id)
-        image = nib.Nifti1Image(output_image, affine=np.eye(4))
+        image = nib.Nifti1Image(image, affine=np.eye(4))
         nib.save(image, path + 'nii.gz')
         print(id)
 
