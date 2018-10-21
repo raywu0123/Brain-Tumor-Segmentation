@@ -18,12 +18,18 @@ class UNet(Model2DBase):
             metadata_dim: int = 0,
             lr: float = 1e-4,
             kernel_size: int = 3,
-            floor_num: int = 2,
-            channel_num: int = 48,
+            floor_num: int = 4,
+            channel_num: int = 64,
             conv_times: int = 2,
         ):
-        super(UNet, self).__init__()
-        self.model = UNet_structure(
+        super(UNet, self).__init__(
+            channels=channels,
+            depth=depth,
+            height=height,
+            width=width,
+            metadata_dim=metadata_dim,
+        )
+        self.model = UNet_Net(
             image_chns=self.data_channels,
             kernel_size=kernel_size,
             floor_num=floor_num,
@@ -35,7 +41,7 @@ class UNet(Model2DBase):
             self.model.cuda()
 
 
-class UNet_structure(nn.Module):
+class UNet_Net(nn.Module):
     def __init__(
         self,
         image_chns,
@@ -45,66 +51,61 @@ class UNet_structure(nn.Module):
         conv_times,
         class_num=1,
     ):
-        super(UNet_structure, self).__init__()
+        super(UNet_Net, self).__init__()
         self.floor_num = floor_num
         self.image_chns = image_chns
         self.down_layers = nn.ModuleList()
         self.up_layers = nn.ModuleList()
-        self.inc = inconv(image_chns, channel_num, kernel_size, conv_times)
-        self.outc = outconv(channel_num, class_num)
 
-        for floor in range(floor_num):
-            channel_times = 2 ** floor
+        in_conv = Conv_N_Times(image_chns, channel_num, kernel_size, conv_times)
+        self.down_layers.append(in_conv)
+        for floor_idx in range(floor_num):
+            channel_times = 2 ** floor_idx
             d = down(channel_num * channel_times, kernel_size, conv_times)
             self.down_layers.append(d)
 
-        for floor in range(floor_num):
-            f_b = floor_num - floor - 1
-            channel_times = 2 ** f_b
+        for floor_idx in range(floor_num)[::-1]:
+            channel_times = 2 ** floor_idx
             u = up(channel_num * 2 * channel_times, kernel_size, conv_times)
             self.up_layers.append(u)
+        self.out_conv = nn.Conv2d(channel_num, class_num, 1)
 
     def forward(self, x):
         x_out = []
-        x = self.inc(x)
-        x_out.append(x)
-        for d in (self.down_layers):
-            x = d(x)
+        for down_layer in self.down_layers:
+            x = down_layer(x)
             x_out.append(x)
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up_layers):
             x = u(x, x_down)
-        x = self.outc(x)
+        x = self.out_conv(x)
         x = torch.sigmoid(x)
         return x
 
 
-class conv_n_times(nn.Module):
+class Conv_N_Times(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, conv_times):
-        super(conv_n_times, self).__init__()
-        self.conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
-        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size, padding=kernel_size // 2)
-        self.batchnorm = nn.BatchNorm2d(out_ch)
+        super(Conv_N_Times, self).__init__()
+        assert(conv_times > 0)
+        self.convs = nn.ModuleList()
+        self.batchnorms = nn.ModuleList()
         self.conv_times = conv_times
 
+        conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
+        self.convs.append(conv)
+
+        for _ in range(conv_times - 1):
+            conv = nn.Conv2d(out_ch, out_ch, kernel_size, padding=kernel_size // 2)
+            self.convs.append(conv)
+        for _ in range(conv_times):
+            batchnorm = nn.BatchNorm2d(out_ch)
+            self.batchnorms.append(batchnorm)
+
     def forward(self, x):
-        x = self.conv(x)
-        x = self.batchnorm(x)
-        x = F.relu(x)
-        for _ in range(self.conv_times - 1):
-            x = self.conv2(x)
-            x = self.batchnorm(x)
+        for conv, batchnorm in zip(self.convs, self.batchnorms):
+            x = conv(x)
             x = F.relu(x)
-        return x
-
-
-class inconv(nn.Module):
-    def __init__(self, in_ch, out_ch, kernel_size, conv_times):
-        super(inconv, self).__init__()
-        self.conv = conv_n_times(in_ch, out_ch, kernel_size, conv_times)
-
-    def forward(self, x):
-        x = self.conv(x)
+            x = batchnorm(x)
         return x
 
 
@@ -114,7 +115,7 @@ class down(nn.Module):
         super(down, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
-            conv_n_times(in_ch, out_ch, kernel_size, conv_times)
+            Conv_N_Times(in_ch, out_ch, kernel_size, conv_times)
         )
 
     def forward(self, x):
@@ -126,28 +127,21 @@ class up(nn.Module):
     def __init__(self, in_ch, kernel_size, conv_times, bilinear=True):
         super(up, self).__init__()
         out_ch = in_ch // 2
-        self.convtran = nn.ConvTranspose2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
-        self.up = nn.Upsample(
-            scale_factor=2, mode='bilinear', align_corners=True
+        self.conv_transpose = nn.ConvTranspose2d(
+            in_ch,
+            out_ch,
+            kernel_size,
+            padding=kernel_size // 2,
+            stride=2,
         )
-        self.conv = conv_n_times(in_ch, out_ch, kernel_size, conv_times)
+        self.conv = Conv_N_Times(in_ch, out_ch, kernel_size, conv_times)
 
-    def forward(self, x1, x2):
-        x1 = self.up(x1)
-        x1 = self.convtran(x1)
-        diffX = x2.size()[2] - x1.size()[2]
-        diffY = x2.size()[3] - x1.size()[3]
-        x1 = F.pad(x1, (0, diffX, 0, diffY))
-        x = torch.cat([x2, x1], dim=1)
-        x = self.conv(x)
-        return x
-
-
-class outconv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(outconv, self).__init__()
-        self.conv = nn.Conv2d(in_ch, out_ch, 1)
-
-    def forward(self, x):
+    def forward(self, x_down, x_up):
+        # x1 = self.up(x1)
+        x_down = self.conv_transpose(x_down)
+        diffX = x_up.size()[2] - x_down.size()[2]
+        diffY = x_up.size()[3] - x_down.size()[3]
+        x_down = F.pad(x_down, (0, diffX, 0, diffY))
+        x = torch.cat([x_down, x_up], dim=1)
         x = self.conv(x)
         return x
