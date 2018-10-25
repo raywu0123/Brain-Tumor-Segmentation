@@ -1,11 +1,9 @@
 from functools import partial
 
 from .toy_model import ToyModel
-<<<<<<< HEAD
+
 from .u_net import UNet
-=======
-from .UNet import UNet
->>>>>>> update to date
+
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
