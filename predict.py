@@ -1,10 +1,22 @@
 import os
+import argparse
 import nibabel as nib
-from parser import brain_tumor_argparse
 import numpy as np
 from dotenv import load_dotenv
 from models import MODELS
 from data.data_providers import DataProviders
+from utils import parse_exp_id
+
+
+def prediction_argparse():
+    parser = argparse.ArgumentParser(description='Brain Tumor Segmentation Prediction')
+    parser.add_argument(
+        '-i',
+        '--exp_id',
+        type=str,
+        help='The exp_id to be used.',
+    )
+    return parser
 
 
 def flow(
@@ -19,31 +31,31 @@ def flow(
     model.load(model_path)
 
     test_volumes = data_provider.get_testing_data()
-    del test_volumes['label']
 
     pred = model.predict(test_volumes, **fit_hyper_parameters)
     print("######prediction ends######")
 
-    ids = data_provider.test_ids
-    pred = np.reshape(pred, (len(ids), 200, 200, 200))
+    test_ids = data_provider.test_ids
+    pred = np.reshape(pred, (len(test_ids), 200, 200, 200))
     pred = np.transpose(pred, (0, 2, 3, 1))
     prediction_path = os.path.join(model_path, "prediction")
     if not os.path.exists(prediction_path):
         os.mkdir(prediction_path)
 
-    #np.save(pred, model_path)
-    for idx, id in enumerate(ids):
+    for idx, test_id in enumerate(test_ids):
         image = pred[idx]
-        path = os.path.join(prediction_path, id)
+        path = os.path.join(prediction_path, test_id)
         image = nib.Nifti1Image(image, affine=np.eye(4))
-        nib.save(image, path + '.nii.gz')
-        print(id)
+        nib.save(image, path[:-4] + '.nii.gz')
+        print(path[:-4] + '.nii.gz')
+
 
 def predict(args):
-    data_provider = DataProviders[args.data_provider_id]
-    get_model, fit_hyper_parameters = MODELS[args.model_id]
-    model_path = args.model_path
-    print(data_provider)
+    model_id, data_id, time_stamp = parse_exp_id(args.exp_id)
+    data_provider = DataProviders[data_id]
+    get_model, fit_hyper_parameters = MODELS[model_id]
+    model_path = os.environ.get('RESULT_DIR') + args.exp_id
+    os.environ['EXP_ID'] = args.exp_id
     model = get_model(
         **data_provider.get_data_format(),
     )
@@ -58,14 +70,7 @@ def predict(args):
 
 def main():
     load_dotenv('./.env')
-
-    parser = brain_tumor_argparse()
-    parser.add_argument(
-        '--model_path',
-        type=str,
-        help='The trained model\'s file path.',
-    )
-
+    parser = prediction_argparse()
     args = parser.parse_args()
 
     predict(args)
