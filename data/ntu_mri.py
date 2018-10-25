@@ -9,7 +9,7 @@ import numpy as np
 np.random.seed = 0
 
 from .base import DataInterface
-
+from preprocess_tools.image_utils import save_array_to_nii
 
 load_dotenv('./.env')
 
@@ -28,11 +28,13 @@ class NTU_MRI(DataInterface):
         self.all_ids = os.listdir(self.image_path)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
+        self.original_niis = {}
 
     def _get_image_and_label(self, data_id):
         # Dims: (N, C, D, H, W)
         img_path = os.path.join(self.image_path, data_id)
-        image = nib.load(img_path).get_fdata()
+        image_obj = nib.load(img_path)
+        image = image_obj.get_fdata()
         # image = np.load(img_path)
         image = np.transpose(image, (2, 0, 1))
 
@@ -43,6 +45,8 @@ class NTU_MRI(DataInterface):
             label = np.transpose(label, (2, 0, 1))
         else:
             label = None
+
+        self.original_niis[data_id] = image_obj
         return image, label
 
     def _data_generator(self, data_ids, batch_size):
@@ -83,7 +87,7 @@ class NTU_MRI(DataInterface):
         return self._get_data(self.test_ids, verbose=True)
 
     def get_all_data(self):
-        return self._get_data(self.train_ids + self.test_ids, verbose=True)
+        return self._get_data(self.all_ids, verbose=True)
 
     def get_data_format(self):
         data_format = {
@@ -94,3 +98,6 @@ class NTU_MRI(DataInterface):
             "metadata_dim": self.metadata_dim,
         }
         return data_format
+
+    def save_result(self, np_array, save_path, data_id):
+        save_array_to_nii(np_array, save_path, self.original_niis[data_id])

@@ -10,7 +10,7 @@ args = parser.parse_args()
 
 from models import MODELS
 from data.data_providers import DataProviders
-from utils import parse_exp_id
+from utils import parse_exp_id, MetricClass
 
 load_dotenv('./.env')
 
@@ -33,23 +33,26 @@ def flow(
         }
     )
 
-    # (N, C, D, H, W) to (image_id, D, H, W)
-    pred = np.reshape(pred, (-1, model.data_depth, model.data_height, model.data_width))
+    label = test_volumes['label']
+    print(MetricClass(pred, label).all_metrics())
     pred = (pred > 0.5).astype(float)
+
+    pred = pred[:, 0, :, :]
     # (image_id, D, H, W) to (image_id, H, W, D)
     pred = np.transpose(pred, (0, 2, 3, 1))
 
-    test_ids = data_provider.train_ids + data_provider.test_ids
+    test_ids = data_provider.all_ids
     
     prediction_path = os.path.join(args.checkpoint_dir, f'predict_on_{data_provider_id}')
     if not os.path.exists(prediction_path):
         os.mkdir(prediction_path)
 
     for image, test_id in tqdm(zip(pred, test_ids)):
-        test_id = test_id.strip('.npy').strip('.nii.gz')
-        path = os.path.join(prediction_path, f'{test_id}.nii.gz')
-        image = nib.Nifti1Image(image, affine=np.eye(4))
-        nib.save(image, path)
+        stripped_test_id = test_id.strip('.npy').strip('.nii.gz')
+        save_path = os.path.join(prediction_path, f'{stripped_test_id}.nii.gz')
+        data_provider.save_result(image, save_path, test_id)
+
+
 
 
 if __name__ == '__main__':

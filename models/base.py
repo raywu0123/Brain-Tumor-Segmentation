@@ -13,6 +13,7 @@ from .utils import (
     normalize_image,
     ImageAugmentor,
     get_2d_from_3d,
+    get_3d_from_2d,
     co_shuffle,
     get_tensor_from_array,
 )
@@ -188,8 +189,9 @@ class Model2DBase(ModelBase):
         test_volumes = test_data['volume']
         test_images = get_2d_from_3d(test_volumes)
         test_images = normalize_image(test_images)
-        pred = self._predict_on_2d_images(test_images, **kwargs)
-        return pred
+        pred_images = self._predict_on_2d_images(test_images, **kwargs)
+        pred_volumes = get_3d_from_2d(pred_images, self.data_depth)
+        return pred_volumes
 
     def save(self):
         torch.save(self.model, os.path.join(self.result_path, 'model'))
