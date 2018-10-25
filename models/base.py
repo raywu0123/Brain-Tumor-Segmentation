@@ -185,6 +185,10 @@ class Model2DBase(ModelBase):
         test_images = get_2d_from_3d(test_volumes)
         test_images = normalize_image(test_images)
         pred = self._predict_on_2d_images(test_images, batch_size)
+        #(N, C, D, H, W) to (image_id, D, H, W)
+        pred = np.reshape(pred, (-1, self.data_depth, self.data_height, self.data_width))
+        #(image_id D, H, W) to (image_id, H, W, D)
+        pred = np.transpose(pred, (0, 2, 3, 1))
         return pred
 
     def save(self):

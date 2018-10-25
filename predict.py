@@ -36,8 +36,7 @@ def flow(
     print("######prediction ends######")
 
     test_ids = data_provider.test_ids
-    pred = np.reshape(pred, (len(test_ids), 200, 200, 200))
-    pred = np.transpose(pred, (0, 2, 3, 1))
+
     prediction_path = os.path.join(model_path, "prediction")
     if not os.path.exists(prediction_path):
         os.mkdir(prediction_path)
