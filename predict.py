@@ -6,16 +6,6 @@ from dotenv import load_dotenv
 from models import MODELS
 from data.data_providers import DataProviders
 
-"""if args.do_comet:
-    experiment = Experiment(
-        api_key=COMET_ML_KEY,
-        log_code=False,
-        project_name=args.comet_project,
-        workspace=args.comet_workspace,
-        parse_args=False,
-    )
-"""
-
 
 def flow(
         data_provider,
@@ -26,11 +16,7 @@ def flow(
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
-    """if args.do_comet:
-        fit_hyper_parameters['experiment'] = experiment"""
-    print(fit_hyper_parameters)
     model.load(model_path)
-    fit_hyper_parameters['batch_size'] = 20
 
     test_volumes = data_provider.get_testing_data()
     del test_volumes['label']
@@ -50,7 +36,7 @@ def flow(
         image = pred[idx]
         path = os.path.join(prediction_path, id)
         image = nib.Nifti1Image(image, affine=np.eye(4))
-        nib.save(image, path + 'nii.gz')
+        nib.save(image, path + '.nii.gz')
         print(id)
 
 def predict(args):
@@ -62,9 +48,6 @@ def predict(args):
         **data_provider.get_data_format(),
     )
 
-    """if args.do_comet:
-        experiment.log_multiple_params(vars(args))"""
-
     flow(
         data_provider=data_provider,
         model=model,
@@ -75,8 +58,6 @@ def predict(args):
 
 def main():
     load_dotenv('./.env')
-    """RESULT_DIR = os.environ.get('RESULT_DIR')
-    COMET_ML_KEY = os.environ.get('COMET_ML_KEY')"""
 
     parser = brain_tumor_argparse()
     parser.add_argument(
