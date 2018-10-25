@@ -10,7 +10,7 @@ from utils import parse_exp_id
 
 
 def flow(
-	    data_id,
+        data_id,
         data_provider,
         model,
         model_path,
@@ -58,7 +58,7 @@ def predict(args):
     )
 
     flow(
-        data_id = data_id,
+        data_id=data_id,
         data_provider=data_provider,
         model=model,
         fit_hyper_parameters=fit_hyper_parameters,
