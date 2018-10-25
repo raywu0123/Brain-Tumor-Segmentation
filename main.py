@@ -70,7 +70,8 @@ def main():
     args.exp_id = os.environ.get('EXP_ID')
     print('EXP_ID:', os.environ.get('EXP_ID'))
 
-    data_provider = DataProviders[args.data_provider_id]
+    get_data_provider, data_provider_parameters = DataProviders[args.data_provider_id]
+    data_provider = get_data_provider(data_provider_parameters)
     get_model, fit_hyper_parameters = MODELS[args.model_id]
 
     model = get_model(

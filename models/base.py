@@ -3,7 +3,8 @@ import math
 
 import numpy as np
 import torch
-
+from dotenv import load_dotenv
+from tqdm import tqdm
 
 from utils import MetricClass
 from .utils import (
@@ -16,7 +17,6 @@ from .utils import (
     get_tensor_from_array,
 )
 
-from dotenv import load_dotenv
 
 load_dotenv('./.env')
 RESULT_DIR_BASE = os.environ.get('RESULT_DIR')
@@ -161,12 +161,16 @@ class Model2DBase(ModelBase):
         batch_image, batch_label = co_shuffle(batch_image, batch_label)
         return batch_image, batch_label
 
-    def _predict_on_2d_images(self, image, batch_size):
+    def _predict_on_2d_images(self, image, batch_size, verbose=False, **kwargs):
         pred_buff = []
         self.model.eval()
 
         batch_num = math.ceil(image.shape[0] // batch_size)
-        for batch_idx in range(batch_num):
+        iterator = list(range(batch_num))
+        if verbose:
+            iterator = tqdm(iterator)            
+            
+        for batch_idx in iterator:
             end_index = min(image.shape[0], (batch_idx + 1) * batch_size)
             batch_image = image[batch_idx * batch_size: end_index]
             batch_image = get_tensor_from_array(batch_image)
@@ -180,11 +184,11 @@ class Model2DBase(ModelBase):
         return pred_buff
 
     def predict(self, test_data, **kwargs):
-        batch_size = kwargs['batch_size']
+        print(kwargs)
         test_volumes = test_data['volume']
         test_images = get_2d_from_3d(test_volumes)
         test_images = normalize_image(test_images)
-        pred = self._predict_on_2d_images(test_images, batch_size)
+        pred = self._predict_on_2d_images(test_images, **kwargs)
         return pred
 
     def save(self):

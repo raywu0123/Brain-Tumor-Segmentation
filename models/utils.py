@@ -57,7 +57,7 @@ def normalize_image(batch_image):
 
 def get_2d_from_3d(batch_volume):
     assert(batch_volume.ndim == 5)
-    batch_volume = np.transpose(batch_volume, (4, 0, 1, 2, 3))
+    batch_volume = np.transpose(batch_volume, (0, 4, 1, 2, 3))
     batch_image = batch_volume.reshape(-1, *batch_volume.shape[-3:])
     return batch_image
 

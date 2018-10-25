@@ -2,7 +2,7 @@ import os
 from functools import partial
 
 # from bistiming import SimpleTimer
-# import nibabel as nib
+import nibabel as nib
 from tqdm import tqdm
 from dotenv import load_dotenv
 import numpy as np
@@ -12,19 +12,18 @@ from .base import DataInterface
 
 
 load_dotenv('./.env')
-NTU_MRI_DIR = os.environ.get('NTU_MRI_DIR')
 
 
 class NTU_MRI(DataInterface):
-    def __init__(self):
+    def __init__(self, DATA_DIR):
         self.img_channels = 1
         self.img_depth = 200
         self.img_height = self.img_width = 200
         self.metadata_dim = 0
 
         self.description = 'NTU_MRI'
-        self.image_path = os.path.join(NTU_MRI_DIR, 'image')
-        self.label_path = os.path.join(NTU_MRI_DIR, 'label')
+        self.image_path = os.path.join(DATA_DIR, 'image')
+        self.label_path = os.path.join(DATA_DIR, 'label')
 
         self.all_ids = os.listdir(self.image_path)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
@@ -33,14 +32,14 @@ class NTU_MRI(DataInterface):
     def _get_image_and_label(self, data_id):
         # Dims: (N, C, D, H, W)
         img_path = os.path.join(self.image_path, data_id)
-        # image = nib.load(img_path).get_fdata()
-        image = np.load(img_path)
+        image = nib.load(img_path).get_fdata()
+        # image = np.load(img_path)
         image = np.transpose(image, (2, 0, 1))
 
         label_path = os.path.join(self.label_path, data_id)
         if os.path.exists(label_path):
-            # label = nib.load(label_path).get_fdata()
-            label = np.load(label_path)
+            label = nib.load(label_path).get_fdata()
+            # label = np.load(label_path)
             label = np.transpose(label, (2, 0, 1))
         else:
             label = None
