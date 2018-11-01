@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 from models import MODELS
 from data.data_providers import DataProviders
+from utils import parse_exp_id
 
 load_dotenv('./.env')
 RESULT_DIR = os.environ.get('RESULT_DIR')
@@ -57,10 +58,16 @@ def flow(
 
 
 def main():
+    if args.checkpoint_dir is not None:
+        folder_name = os.path.basename(os.path.normpath(args.checkpoint_dir))
+        model_id, data_provider_id, time_stamp = parse_exp_id(folder_name)
+        args.model_id, args.data_provider_id = model_id, data_provider_id
+
     time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     os.environ['EXP_ID'] = \
         f'{args.model_id}_on_{args.data_provider_id}_{time_stamp}'
     os.mkdir(os.path.join(RESULT_DIR, os.environ.get('EXP_ID')))
+    args.exp_id = os.environ.get('EXP_ID')
     print('EXP_ID:', os.environ.get('EXP_ID'))
 
     data_provider = DataProviders[args.data_provider_id]

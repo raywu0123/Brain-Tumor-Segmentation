@@ -2,6 +2,14 @@ import numpy as np
 from medpy import metric as medmetric
 
 
+def parse_exp_id(exp_id_string):
+    splits = exp_id_string.split('_on_')
+    model_id = splits[0]
+    data_id = '_'.join(splits[-1].split('_')[:-1])
+    time_stamp = splits[-1].split('_')[-1]
+    return model_id, data_id, time_stamp
+
+
 class MetricClass:
     def __init__(
             self,

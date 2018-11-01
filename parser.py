@@ -48,5 +48,10 @@ def brain_tumor_argparse():
         help='comet ml workspace name',
         default='raywu0123',
     )
+    parser.add_argument(
+        '--checkpoint_dir',
+        type=str,
+        help='checkpoint directory to load the model',
+    )
     parser.set_defaults(do_comet=False)
     return parser
