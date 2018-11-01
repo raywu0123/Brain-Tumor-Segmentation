@@ -169,8 +169,8 @@ class Model2DBase(ModelBase):
         batch_num = math.ceil(image.shape[0] // batch_size)
         iterator = list(range(batch_num))
         if verbose:
-            iterator = tqdm(iterator)            
-            
+            iterator = tqdm(iterator)
+
         for batch_idx in iterator:
             end_index = min(image.shape[0], (batch_idx + 1) * batch_size)
             batch_image = image[batch_idx * batch_size: end_index]

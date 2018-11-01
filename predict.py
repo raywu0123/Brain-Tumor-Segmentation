@@ -1,8 +1,8 @@
 import os
-import nibabel as nib
 import numpy as np
 from dotenv import load_dotenv
 from tqdm import tqdm
+# import nibabel as nib
 
 from parser import brain_tumor_argparse
 parser = brain_tumor_argparse()
@@ -25,7 +25,7 @@ def flow(
         fit_hyper_parameters = {}
 
     test_volumes = data_provider.get_all_data()
-    pred = model.predict(
+    predict_probs = model.predict(
         test_volumes,
         **{
             **fit_hyper_parameters,
@@ -34,25 +34,35 @@ def flow(
     )
 
     label = test_volumes['label']
-    print(MetricClass(pred, label).all_metrics())
-    pred = (pred > 0.5).astype(float)
+    print(MetricClass(predict_probs, label).all_metrics())
+    predict_binarys = (predict_probs > 0.5).astype(float)
 
-    pred = pred[:, 0, :, :]
+    predict_binarys = predict_binarys[:, 0, :, :]
+    predict_probs = predict_probs[:, 0, :, :]
     # (image_id, D, H, W) to (image_id, H, W, D)
-    pred = np.transpose(pred, (0, 2, 3, 1))
+    predict_probs = np.transpose(predict_probs, (0, 2, 3, 1))
+    predict_binarys = np.transpose(predict_binarys, (0, 2, 3, 1))
 
     test_ids = data_provider.all_ids
-    
-    prediction_path = os.path.join(args.checkpoint_dir, f'predict_on_{data_provider_id}')
-    if not os.path.exists(prediction_path):
-        os.mkdir(prediction_path)
 
-    for image, test_id in tqdm(zip(pred, test_ids)):
+    binary_prediction_path = os.path.join(
+        args.checkpoint_dir, f'binary_predict_on_{data_provider_id}'
+    )
+    if not os.path.exists(binary_prediction_path):
+        os.mkdir(binary_prediction_path)
+
+    prob_prediction_path = os.path.join(args.checkpoint_dir, f'prob_predict_on_{data_provider_id}')
+    if not os.path.exists(prob_prediction_path):
+        os.mkdir(prob_prediction_path)
+
+    for predict_prob, predict_binary, test_id in tqdm(
+            zip(predict_probs, predict_binarys, test_ids)
+    ):
         stripped_test_id = test_id.strip('.npy').strip('.nii.gz')
-        save_path = os.path.join(prediction_path, f'{stripped_test_id}.nii.gz')
-        data_provider.save_result(image, save_path, test_id)
-
-
+        binary_save_path = os.path.join(binary_prediction_path, f'{stripped_test_id}.nii.gz')
+        data_provider.save_result(predict_binary, binary_save_path, test_id)
+        prob_save_path = os.path.join(prob_prediction_path, f'{stripped_test_id}.nii.gz')
+        data_provider.save_result(predict_prob, prob_save_path, test_id)
 
 
 if __name__ == '__main__':

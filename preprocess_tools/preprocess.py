@@ -1,15 +1,14 @@
 import os
 from sys import argv
 
-import numpy as np
-
-from image_utils import ImageProcessor, save_array_to_nii
+from .image_utils import ImageProcessor, save_array_to_nii
 
 
 if __name__ == '__main__':
     data_dir = argv[1]
     print(f'data_dir:{data_dir}')
     file_names = os.listdir(os.path.join(data_dir, 'image'))
+    file_names = [f for f in file_names if not f.startswith('.')]
 
     mask_dir = argv[2]
     print(f'mask_dir:{mask_dir}')
@@ -36,14 +35,14 @@ if __name__ == '__main__':
                 mask_path=mask_path,
                 file_id=file_id,
         )
-        np.save(
-            os.path.join(result_dir, 'image', f'{file_id}.npy'),
-            preprocessed_image,
-        )
-        np.save(
-            os.path.join(result_dir, 'label', f'{file_id}.npy'),
-            preprocessed_label,
-        )
+        # np.save(
+        #     os.path.join(result_dir, 'image', f'{file_id}.npy'),
+        #     preprocessed_image,
+        # )
+        # np.save(
+        #     os.path.join(result_dir, 'label', f'{file_id}.npy'),
+        #     preprocessed_label,
+        # )
         save_array_to_nii(
             preprocessed_image,
             os.path.join(result_dir, 'image', f'{file_id}.nii.gz'),
