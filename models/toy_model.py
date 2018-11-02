@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from dotenv import load_dotenv
 
-from .base import Model2DBase
+from .base import Model2DBase, AsyncModel2dBase
 
 load_dotenv('./.env')
 RESULT_DIR_BASE = os.environ.get('RESULT_DIR')

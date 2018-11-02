@@ -2,14 +2,24 @@ class DataInterface:
 
     _description = None
 
-    def training_data_generator(self):
+    def get_training_dataloader(self, batch_size, shuffle, num_workers):
         raise NotImplementedError(
-            f'{self.__class__.__name__} does not implement training_data_generator'
+            f'{self.__class__.__name__} does not implement training_datagenerator'
         )
 
-    def testing_data_generator(self):
+    def get_testing_dataloader(self, batch_size, shuffle, num_workers):
         raise NotImplementedError(
-            f'{self.__class__.__name__} does not implement testing_data_generator'
+            f'{self.__class__.__name__} does not implement testing_datagenerator'
+        )
+
+    def training_datagenerator(self):
+        raise NotImplementedError(
+            f'{self.__class__.__name__} does not implement training_datagenerator'
+        )
+
+    def testing_datagenerator(self):
+        raise NotImplementedError(
+            f'{self.__class__.__name__} does not implement testing_datagenerator'
         )
 
     def get_training_data(self):
