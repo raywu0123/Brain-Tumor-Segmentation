@@ -3,7 +3,6 @@ import math
 import multiprocessing as mp
 import time
 
-from bistiming import SimpleTimer
 import numpy as np
 import torch
 from dotenv import load_dotenv
@@ -219,7 +218,7 @@ class Model2DBase(ModelBase):
             input()
 
 
-class AsyncModel2dBase(Model2DBase):
+class AsyncModel2DBase(Model2DBase):
     def __init__(
         self,
         channels: int = 1,
