@@ -81,7 +81,7 @@ class ToyModelNet(nn.Module):
             self.encoder_convs.append(conv)
             self.encoder_batchnorms.append(batchnorm)
 
-        decoder_num_units = num_units[::-1] + (image_chns,)
+        decoder_num_units = num_units[::-1] + (1,)
         self.decoder_deconvs = nn.ModuleList()
         self.decoder_batchnorms = nn.ModuleList()
         img_size = image_height // (2 ** len(pooling_layer_num))

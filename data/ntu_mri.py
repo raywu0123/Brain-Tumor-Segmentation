@@ -3,7 +3,6 @@ from functools import partial
 
 import nibabel as nib
 from tqdm import tqdm
-from dotenv import load_dotenv
 import numpy as np
 np.random.seed = 0
 from torch.utils.data import DataLoader, Dataset
@@ -11,7 +10,6 @@ from torch.utils.data import DataLoader, Dataset
 from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
 
-load_dotenv('./.env')
 
 img_channels = 1
 img_depth = 200

@@ -21,6 +21,7 @@ imgaug = "*"
 opencv-python = "*"
 augmentor = "*"
 albumentations = "*"
+simpleitk = "*"
 
 [dev-packages]
 

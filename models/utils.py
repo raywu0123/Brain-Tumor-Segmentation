@@ -55,7 +55,7 @@ def normalize_image(batch_image):
 
 def get_2d_from_3d(batch_volume):
     assert(batch_volume.ndim == 5)
-    batch_volume = np.transpose(batch_volume, (0, 4, 1, 2, 3))
+    batch_volume = np.transpose(batch_volume, (0, 2, 1, 3, 4))
     batch_image = batch_volume.reshape(-1, *batch_volume.shape[-3:])
     return batch_image
 
@@ -68,7 +68,7 @@ def get_3d_from_2d(batch_image, data_depth):
 
 
 def co_shuffle(batch_data, batch_label):
-    assert(batch_data.shape == batch_label.shape)
+    assert(len(batch_data) == len(batch_label))
     p = np.random.permutation(len(batch_data))
     batch_data = batch_data[p]
     batch_label = batch_label[p]
@@ -125,7 +125,7 @@ class ImageAugmentor:
 
     def co_transform(self, batch_image, batch_label):
         assert(batch_image.shape[-3:] == (self.data_channels, self.data_height, self.data_width))
-        assert(batch_label.shape == batch_image.shape)
+        assert(len(batch_label) == len(batch_image))
 
         transform_fn = self.transform_fns[self.mode]
         return transform_fn(batch_image, batch_label)

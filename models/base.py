@@ -165,6 +165,7 @@ class Model2DBase(ModelBase):
 
         batch_image = get_2d_from_3d(batch_volume)
         batch_label = get_2d_from_3d(batch_label)
+
         batch_image = normalize_image(batch_image)
 
         batch_image, batch_label = co_shuffle(batch_image, batch_label)
@@ -173,8 +174,7 @@ class Model2DBase(ModelBase):
     def _predict_on_2d_images(self, image, batch_size, verbose=False, **kwargs):
         pred_buff = []
         self.model.eval()
-
-        batch_num = math.ceil(image.shape[0] // batch_size)
+        batch_num = math.ceil(image.shape[0] / batch_size)
         iterator = list(range(batch_num))
         if verbose:
             iterator = tqdm(iterator)
