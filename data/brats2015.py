@@ -8,10 +8,12 @@ np.random.seed = 0
 
 from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
+from .utils import to_one_hot_label
 
 modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
 label_base = 'OT.'
 data_extension = '.mha'
+
 
 class BRATS2015(DataInterface):
     def __init__(self, DATA_DIRS):
@@ -19,6 +21,7 @@ class BRATS2015(DataInterface):
         self.img_depth = 155
         self.img_height = self.img_width = 240
         self.metadata_dim = 0
+        self.class_num = 5
 
         self.description = 'BRATS2015'
         self.DATA_DIRS = DATA_DIRS
@@ -30,7 +33,7 @@ class BRATS2015(DataInterface):
             self.all_ids.extend(folder_dirs)
 
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
-        self.test_ids = self.all_ids[-len(self.all_ids) // 10: ]
+        self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
         print(f'training on {len(self.train_ids)} samples, '
               f'validating on {len(self.test_ids)} samples')
 
@@ -38,6 +41,7 @@ class BRATS2015(DataInterface):
         image = [self._get_image_from_folder(data_id, base) for base in modal_bases]
         image = np.asarray(image)
         label = self._get_image_from_folder(data_id, label_base)
+        label = to_one_hot_label(label, self.class_num)
         return image, label
 
     @staticmethod
@@ -76,7 +80,7 @@ class BRATS2015(DataInterface):
         ))
         batch_label = np.empty((
             len(data_ids),
-            1,
+            self.class_num,
             self.img_depth,
             self.img_height,
             self.img_width,
@@ -107,6 +111,7 @@ class BRATS2015(DataInterface):
             "height": self.img_height,
             "width": self.img_width,
             "metadata_dim": self.metadata_dim,
+            "class_num": self.class_num,
         }
         return data_format
 

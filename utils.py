@@ -18,9 +18,18 @@ class MetricClass:
     ):
         if pred.shape != tar.shape:
             raise ValueError(
-                f"pred.shape should be eqaul to tar.shape, "
+                f"pred.shape should be equal to tar.shape, "
                 f"got pred = {pred.shape} and tar = {tar.shape}",
             )
+        if pred.shape[1] < 2:
+            raise ValueError(
+                f'pred.shape[1] (class_num) should be greater than 1, '
+                f'got class_num = {pred.shape[1]}'
+            )
+        # Strip background
+        pred = pred[:, 1:]
+        tar = tar[:, 1:]
+
         self.prob_pred = pred
         self.pred = (pred > 0.5).astype(int)
         self.tar = tar

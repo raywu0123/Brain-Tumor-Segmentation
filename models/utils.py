@@ -11,25 +11,35 @@ from albumentations import (
     ElasticTransform,
 )
 
+epsilon = 1e-8
 
-def weighted_binary_cross_entropy(output, target, weights=None):
-    epsilon = 1e-8
-    if weights is not None:
-        assert len(weights) == 2
-        weights = torch.tensor(weights, requires_grad=False)
-        if torch.cuda.is_available:
-            weights = weights.cuda()
-        loss = weights[1] * (target * torch.log(output + epsilon)) + \
-            weights[0] * ((1 - target) * torch.log(1 - output + epsilon))
+
+def weighted_cross_entropy(output, target, weights=None):
+    assert(output.shape == target.shape)
+    if weights is None:
+        weights = (1,) * output.shape[1]
     else:
-        loss = target * torch.log(output + epsilon) + (1 - target) * torch.log(1 - output + epsilon)
+        assert(len(weights) == output.shape[1])
 
-    return torch.neg(torch.mean(loss))
+    weights = torch.Tensor(weights)
+    if torch.cuda.is_available():
+        weights = weights.cuda()
+
+    target = target.transpose(1, -1)
+    output = output.transpose(1, -1)
+    loss = target * weights * torch.log(output + epsilon)
+    loss = -torch.mean(torch.sum(loss, dim=1))
+    return loss
 
 
 def soft_dice_score(pred, tar):
     # Calculated for whole batch
     assert(pred.shape == tar.shape)
+    assert(pred.shape[1] > 1)
+
+    # Strip background
+    pred = pred[:, 1:]
+    tar = tar[:, 1:]
 
     batch_size = pred.shape[0]
     m1 = pred.view(batch_size, -1)

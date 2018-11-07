@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from utils import MetricClass
 from .utils import (
-    weighted_binary_cross_entropy,
+    weighted_cross_entropy,
     soft_dice_score,
     normalize_image,
     ImageAugmentor,
@@ -53,12 +53,14 @@ class Model2DBase(ModelBase):
             height: int = 200,
             width: int = 200,
             metadata_dim: int = 0,
+            class_num: int = 2,
         ):
         self.data_channels = channels
         self.data_depth = depth
         self.data_height = height
         self.data_width = width
         self.metadata_dim = metadata_dim
+        self.class_num = class_num
         self.comet_experiment = None
 
         self.model = None
@@ -97,10 +99,10 @@ class Model2DBase(ModelBase):
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
-                        'bce_loss': np.mean(losses),
+                        'crossentropy_loss': np.mean(losses),
                         'dice_score': np.mean(dice_scores),
-                    },
-                        prefix='training')
+                    }, prefix='training', step=i_epoch
+                    )
                     self.comet_experiment.log_multiple_metrics(
                         metrics, prefix='validation', step=i_epoch
                     )
@@ -121,22 +123,21 @@ class Model2DBase(ModelBase):
             self.model.zero_grad()
             batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
             batch_label = label[batch_idx * batch_size: (batch_idx + 1) * batch_size]
+            class_weights = 1. / (np.mean(batch_label, axis=(0, 2, 3)) + 1e-8)
+
             batch_image = get_tensor_from_array(batch_image)
             batch_label = get_tensor_from_array(batch_label)
 
             pred = self.model(batch_image)
-            bce_loss = weighted_binary_cross_entropy(pred, batch_label, weights=(1, 1. / 1e-3))
+            crossentropy_loss = weighted_cross_entropy(pred, batch_label, weights=class_weights)
             dice_score = soft_dice_score(pred, batch_label)
 
-            # total_loss = bce_loss
-            # total_loss = bce_loss - dice_score
-            # total_loss = 1 - dice_score
-            total_loss = bce_loss - torch.log(dice_score)
+            total_loss = crossentropy_loss - torch.log(dice_score)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             self.opt.step()
 
-            losses.append(bce_loss.item())
+            losses.append(crossentropy_loss.item())
             dice_scores.append(dice_score.item())
 
         return losses, dice_scores
