@@ -59,7 +59,7 @@ class NTU_MRI_LOADING_BASE:
         else:
             label = None
 
-        self.original_niis[data_id] = image_obj
+        # self.original_niis[data_id] = image_obj
         return image, label
 
 

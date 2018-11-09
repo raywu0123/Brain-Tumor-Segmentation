@@ -1,6 +1,8 @@
 import numpy as np
 from medpy import metric as medmetric
 
+from data.utils import to_one_hot_label
+
 
 def parse_exp_id(exp_id_string):
     splits = exp_id_string.split('_on_')
@@ -31,7 +33,7 @@ class MetricClass:
         tar = tar[:, 1:]
 
         self.prob_pred = pred
-        self.pred = (pred > 0.5).astype(int)
+        self.pred = self.hard_max(pred)
         self.tar = tar
         self.do_all_metrics = {
             'accuracy': self.accuracy,
@@ -76,3 +78,10 @@ class MetricClass:
         for metric, result in results.items():
             print(f'{metric}: {result}')
         return results
+
+    @staticmethod
+    def hard_max(x):
+        index_x = np.argmax(x, axis=1)
+        categorical_x = to_one_hot_label(index_x, class_num=x.shape[1])
+        categorical_x = np.moveaxis(categorical_x, 0, 1)
+        return categorical_x

@@ -28,7 +28,7 @@ def weighted_cross_entropy(output, target, weights=None):
     target = target.transpose(1, -1)
     output = output.transpose(1, -1)
     loss = target * weights * torch.log(output + epsilon)
-    loss = -torch.mean(torch.sum(loss, dim=1))
+    loss = -torch.mean(torch.sum(loss, dim=-1))
     return loss
 
 
@@ -73,7 +73,7 @@ def get_2d_from_3d(batch_volume):
 def get_3d_from_2d(batch_image, data_depth):
     assert(batch_image.ndim == 4)
     batch_volume = batch_image.reshape(-1, data_depth, *batch_image.shape[-3:])
-    batch_volume = batch_volume.transpose([0, 2, 3, 4, 1])
+    batch_volume = batch_volume.transpose([0, 2, 1, 3, 4])
     return batch_volume
 
 

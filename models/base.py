@@ -89,7 +89,7 @@ class Model2DBase(ModelBase):
             if i_epoch % verbose_epoch_num == 0:
                 print(
                     f'epoch: {i_epoch}',
-                    f', bce_loss: {np.mean(losses)}',
+                    f', crossentropy_loss: {np.mean(losses)}',
                     f', dice_score: {np.mean(dice_scores)}',
                 )
 
@@ -123,7 +123,12 @@ class Model2DBase(ModelBase):
             self.model.zero_grad()
             batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
             batch_label = label[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            class_weights = 1. / (np.mean(batch_label, axis=(0, 2, 3)) + 1e-8)
+
+            class_weights = np.divide(
+                1., np.mean(batch_label, axis=(0, 2, 3)),
+                out=np.ones(batch_label.shape[1]),
+                where=np.mean(batch_label, axis=(0, 2, 3)) != 0,
+            )
 
             batch_image = get_tensor_from_array(batch_image)
             batch_label = get_tensor_from_array(batch_label)
