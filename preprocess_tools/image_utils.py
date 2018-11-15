@@ -102,7 +102,10 @@ class ImageProcessor():
 
     def preprocess(self, image_path, label_path, mask_path, file_id):
         image_obj, image = load_nii(image_path)
-        label_obj, label = load_nii(label_path)
+        if os.path.isfile(label_path):
+            label_obj, label = load_nii(label_path)
+        else:
+            label_obj, label = image_obj, np.zeros_like(image)
         mask_obj, mask = load_nii(mask_path)
         header = image_obj.header
         zooms = header.get_zooms()

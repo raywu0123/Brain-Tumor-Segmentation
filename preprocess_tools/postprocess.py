@@ -1,6 +1,6 @@
 import os
 from sys import argv
-from image_utils import ImageProcessor, save_array_to_nii
+from .image_utils import ImageProcessor, save_array_to_nii
 
 
 if __name__ == '__main__':
