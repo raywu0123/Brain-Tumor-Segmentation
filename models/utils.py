@@ -6,8 +6,6 @@ from keras.preprocessing.image import ImageDataGenerator
 import Augmentor
 from albumentations import (
     Compose,
-    OneOf,
-    NoOp,
     ShiftScaleRotate,
     Flip,
     ElasticTransform,
@@ -96,7 +94,7 @@ class ImageAugmentor:
         self.data_height = data_height
         self.data_width = data_width
         self.mode = mode
-        self.keras_data_generator = ImageDataGenerator(
+        self.keras_datagenerator = ImageDataGenerator(
             horizontal_flip=True,
             vertical_flip=True,
             rotation_range=20,
@@ -136,11 +134,11 @@ class ImageAugmentor:
         transformed_image = []
         transformed_label = []
         for image, label in zip(batch_image, batch_label):
-            rdm_transform = self.keras_data_generator.get_random_transform(
+            rdm_transform = self.keras_datagenerator.get_random_transform(
                 (self.data_channels, self.data_height, self.data_width),
             )
-            image = self.keras_data_generator.apply_transform(image, rdm_transform)
-            label = self.keras_data_generator.apply_transform(label, rdm_transform)
+            image = self.keras_datagenerator.apply_transform(image, rdm_transform)
+            label = self.keras_datagenerator.apply_transform(label, rdm_transform)
             transformed_image.append(image)
             transformed_label.append(label)
 
@@ -202,13 +200,7 @@ class ImageAugmentor:
     @staticmethod
     def _albumentations_strong_aug():
         return Compose([
-            OneOf(
-                [ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20), NoOp()]
-            ),
-            OneOf(
-                [Flip(), NoOp()]
-            ),
-            OneOf(
-                [ElasticTransform(alpha=720, sigma=24), NoOp()]
-            ),
+            ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20),
+            Flip(),
+            ElasticTransform(alpha=720, sigma=24),
         ])

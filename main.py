@@ -46,8 +46,14 @@ def flow(
 
     if args.use_generator:
         model.fit_generator(
-            training_data_generator=data_provider.training_data_generator,
-            validation_data_generator=data_provider.testing_data_generator,
+            training_datagenerator=data_provider.training_datagenerator,
+            validation_datagenerator=data_provider.testing_datagenerator,
+            **fit_hyper_parameters,
+        )
+    elif args.use_dataloader:
+        model.fit_dataloader(
+            get_training_dataloader=data_provider.get_training_dataloader,
+            get_validation_dataloader=data_provider.get_testing_dataloader,
             **fit_hyper_parameters,
         )
     else:

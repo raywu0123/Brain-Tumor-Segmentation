@@ -23,10 +23,16 @@ def brain_tumor_argparse():
         default=5566,
     )
     parser.add_argument(
-        '-g',
+        '-ug',
         '--use_generator',
         action='store_true',
         help='Use generator when RAM isn\'t large enough',
+    )
+    parser.add_argument(
+        '-ud',
+        '--use_dataloader',
+        action='store_true',
+        help='Use dataloader when RAM isn\'t large enough',
     )
     parser.add_argument(
         '--comet',

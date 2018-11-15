@@ -6,13 +6,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 from dotenv import load_dotenv
 
-from .base import Model2DBase
+from .base import AsyncModel2DBase
 
 load_dotenv('./.env')
 RESULT_DIR_BASE = os.environ.get('RESULT_DIR')
 
 
-class ToyModel(Model2DBase):
+class ToyModel(AsyncModel2DBase):
     def __init__(
             self,
             channels: int = 1,
