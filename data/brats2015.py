@@ -58,17 +58,17 @@ class BRATS2015(DataInterface):
         image_array = sitk.GetArrayFromImage(image)
         return image_array
 
-    def _data_generator(self, data_ids, batch_size):
+    def _datagenerator(self, data_ids, batch_size):
         selected_ids = np.random.choice(data_ids, batch_size)
         return self._get_data(selected_ids)
 
     @property
-    def testing_data_generator(self):
-        return partial(self._data_generator, self.test_ids)
+    def testing_datagenerator(self):
+        return partial(self._datagenerator, self.test_ids)
 
     @property
-    def training_data_generator(self):
-        return partial(self._data_generator, self.train_ids)
+    def training_datagenerator(self):
+        return partial(self._datagenerator, self.train_ids)
 
     def _get_data(self, data_ids, verbose=False):
         batch_volume = np.empty((

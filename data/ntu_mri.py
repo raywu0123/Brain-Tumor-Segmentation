@@ -16,6 +16,7 @@ img_channels = 1
 img_depth = 200
 img_height = img_width = 200
 metadata_dim = 0
+class_num = 2
 
 
 class NTU_MRI_LOADING_BASE:
@@ -33,7 +34,13 @@ class NTU_MRI_LOADING_BASE:
             img_height,
             img_width,
         ))
-        batch_label = np.empty_like(batch_volume)
+        batch_label = np.empty((
+            len(data_ids),
+            class_num,
+            img_depth,
+            img_height,
+            img_width,
+        ))
 
         iterator = data_ids
         if verbose:
@@ -55,7 +62,7 @@ class NTU_MRI_LOADING_BASE:
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
             label = np.transpose(label, (2, 0, 1))
-            label = to_one_hot_label(label, self.class_num)
+            label = to_one_hot_label(label, class_num)
         else:
             label = None
 
@@ -83,31 +90,6 @@ class NTU_MRI(DataInterface, NTU_MRI_LOADING_BASE):
     def training_datagenerator(self):
         return partial(self._datagenerator, self.train_ids)
 
-    def _get_data(self, data_ids, verbose=False):
-        batch_volume = np.empty((
-            len(data_ids),
-            self.img_channels,
-            self.img_depth,
-            self.img_height,
-            self.img_width,
-        ))
-        batch_label = np.empty((
-            len(data_ids),
-            self.class_num,
-            self.img_depth,
-            self.img_height,
-            self.img_width,
-        ))
-
-        iterator = data_ids
-        if verbose:
-            print('Loading data...')
-            iterator = tqdm(data_ids)
-
-        for idx, data_id in enumerate(iterator):
-            batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
-        return {'volume': batch_volume, 'metadata': None, 'label': batch_label}
-
     def get_training_data(self):
         return self._get_data(self.train_ids, verbose=True)
 
@@ -131,12 +113,12 @@ class NTU_MRI(DataInterface, NTU_MRI_LOADING_BASE):
 
     def get_data_format(self):
         data_format = {
-            "channels": self.img_channels,
-            "depth": self.img_depth,
-            "height": self.img_height,
-            "width": self.img_width,
-            "metadata_dim": self.metadata_dim,
-            "class_num": self.class_num,
+            "channels": img_channels,
+            "depth": img_depth,
+            "height": img_height,
+            "width": img_width,
+            "metadata_dim": metadata_dim,
+            "class_num": class_num,
         }
         return data_format
 

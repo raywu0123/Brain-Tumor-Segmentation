@@ -108,17 +108,10 @@ class Model2DBase(ModelBase):
                     )
 
     def train_on_batch(self, training_datagenerator, batch_size):
-        # with SimpleTimer('load-data'):
-        image, label = self._get_data_with_generator(
-            training_datagenerator,
-            1,
-        )
-        # with SimpleTimer('data-augmentation'):
-        image, label = self.image_augmentor.co_transform(image, label)
+        image, label = self._get_augmented_image_and_label(datagenerator=training_datagenerator)
         losses = []
         dice_scores = []
 
-        # with SimpleTimer('training'):
         for batch_idx in range(self.data_depth // batch_size):
             self.model.zero_grad()
             batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
@@ -146,6 +139,15 @@ class Model2DBase(ModelBase):
             dice_scores.append(dice_score.item())
 
         return losses, dice_scores
+
+    def _get_augmented_image_and_label(self, **kwargs):
+        datagenerator = kwargs['datagenerator']
+        image, label = self._get_data_with_generator(
+            datagenerator,
+            1,
+        )
+        image, label = self.image_augmentor.co_transform(image, label)
+        return image, label
 
     def _validate(self, validation_datagenerator, batch_size, verbose_epoch_num):
         label_buff = []
@@ -232,6 +234,7 @@ class AsyncModel2DBase(Model2DBase):
         height: int = 200,
         width: int = 200,
         metadata_dim: int = 0,
+        class_num: int = 2,
     ):
         super().__init__(
             channels,
@@ -239,6 +242,7 @@ class AsyncModel2DBase(Model2DBase):
             height,
             width,
             metadata_dim,
+            class_num,
         )
         self.data_queue = mp.Queue()
         self.datagenerator = None
@@ -279,34 +283,11 @@ class AsyncModel2DBase(Model2DBase):
                         metrics, prefix='validation', step=i_epoch
                     )
 
-    def train_on_batch(self, training_datagenerator, batch_size):
+    def _get_augmented_image_and_label(self, **kwargs):
         while self.data_queue.empty():
             time.sleep(0.1)
         image, label = self.data_queue.get()
-        losses = []
-        dice_scores = []
-        for batch_idx in range(self.data_depth // batch_size):
-            self.model.zero_grad()
-            batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            batch_label = label[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            batch_image = get_tensor_from_array(batch_image)
-            batch_label = get_tensor_from_array(batch_label)
-
-            pred = self.model(batch_image)
-            bce_loss = weighted_binary_cross_entropy(pred, batch_label, weights=(1, 1. / 1e-3))
-            dice_score = soft_dice_score(pred, batch_label)
-
-            # total_loss = bce_loss
-            # total_loss = bce_loss - dice_score
-            # total_loss = 1 - dice_score
-            total_loss = bce_loss - torch.log(dice_score)
-            total_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
-            self.opt.step()
-
-            losses.append(bce_loss.item())
-            dice_scores.append(dice_score.item())
-        return losses, dice_scores
+        return image, label
 
     def _put_data_into_queue(self):
         while True:

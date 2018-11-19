@@ -36,7 +36,7 @@ MODELS = {
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 25,
+            'batch_size': 20,
         },
     ),
 }

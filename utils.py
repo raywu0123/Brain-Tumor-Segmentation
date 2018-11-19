@@ -29,12 +29,9 @@ class MetricClass:
                 f'got class_num = {pred.shape[1]}'
             )
         # Strip background
-        pred = pred[:, 1:]
-        tar = tar[:, 1:]
-
-        self.prob_pred = pred
-        self.pred = self.hard_max(pred)
-        self.tar = tar
+        self.prob_pred = pred[:, 1:]
+        self.pred = self.hard_max(pred)[:, 1:]
+        self.tar = tar[:, 1:]
         self.do_all_metrics = {
             'accuracy': self.accuracy,
             'dice-score': self.dice_score,

@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 load_dotenv('./.env')
 import torch.optim as optim
 
-from .base import Model2DBase
+from .base import AsyncModel2DBase
 
 
-class UNet(Model2DBase):
+class UNet(AsyncModel2DBase):
     def __init__(
             self,
             channels: int = 1,
