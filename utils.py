@@ -1,6 +1,8 @@
 import numpy as np
 from medpy import metric as medmetric
 
+from data.utils import to_one_hot_label
+
 
 def parse_exp_id(exp_id_string):
     splits = exp_id_string.split('_on_')
@@ -18,12 +20,18 @@ class MetricClass:
     ):
         if pred.shape != tar.shape:
             raise ValueError(
-                f"pred.shape should be eqaul to tar.shape, "
+                f"pred.shape should be equal to tar.shape, "
                 f"got pred = {pred.shape} and tar = {tar.shape}",
             )
-        self.prob_pred = pred
-        self.pred = (pred > 0.5).astype(int)
-        self.tar = tar
+        if pred.shape[1] < 2:
+            raise ValueError(
+                f'pred.shape[1] (class_num) should be greater than 1, '
+                f'got class_num = {pred.shape[1]}'
+            )
+        # Strip background
+        self.prob_pred = pred[:, 1:]
+        self.pred = self.hard_max(pred)[:, 1:]
+        self.tar = tar[:, 1:]
         self.do_all_metrics = {
             'accuracy': self.accuracy,
             'dice-score': self.dice_score,
@@ -67,3 +75,10 @@ class MetricClass:
         for metric, result in results.items():
             print(f'{metric}: {result}')
         return results
+
+    @staticmethod
+    def hard_max(x):
+        index_x = np.argmax(x, axis=1)
+        categorical_x = to_one_hot_label(index_x, class_num=x.shape[1])
+        categorical_x = np.moveaxis(categorical_x, 0, 1)
+        return categorical_x

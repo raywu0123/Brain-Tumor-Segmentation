@@ -3,20 +3,20 @@ from functools import partial
 
 import nibabel as nib
 from tqdm import tqdm
-from dotenv import load_dotenv
 import numpy as np
 np.random.seed = 0
 from torch.utils.data import DataLoader, Dataset
 
 from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
+from .utils import to_one_hot_label
 
-load_dotenv('./.env')
 
 img_channels = 1
 img_depth = 200
 img_height = img_width = 200
 metadata_dim = 0
+class_num = 2
 
 
 class NTU_MRI_LOADING_BASE:
@@ -34,7 +34,13 @@ class NTU_MRI_LOADING_BASE:
             img_height,
             img_width,
         ))
-        batch_label = np.empty_like(batch_volume)
+        batch_label = np.empty((
+            len(data_ids),
+            class_num,
+            img_depth,
+            img_height,
+            img_width,
+        ))
 
         iterator = data_ids
         if verbose:
@@ -56,10 +62,11 @@ class NTU_MRI_LOADING_BASE:
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
             label = np.transpose(label, (2, 0, 1))
+            label = to_one_hot_label(label, class_num)
         else:
             label = None
 
-        self.original_niis[data_id] = image_obj
+        # self.original_niis[data_id] = image_obj
         return image, label
 
 
@@ -111,6 +118,7 @@ class NTU_MRI(DataInterface, NTU_MRI_LOADING_BASE):
             "height": img_height,
             "width": img_width,
             "metadata_dim": metadata_dim,
+            "class_num": class_num,
         }
         return data_format
 

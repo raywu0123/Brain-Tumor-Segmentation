@@ -20,6 +20,7 @@ class ToyModel(AsyncModel2DBase):
             height: int = 200,
             width: int = 200,
             metadata_dim: int = 0,
+            class_num: int = 2,
             num_units: [int] = (32, 32, 64, 64, 128),
             pooling_layer_num: [int] = (1, 3),
             kernel_size: int = 3,
@@ -31,11 +32,13 @@ class ToyModel(AsyncModel2DBase):
             height=height,
             width=width,
             metadata_dim=metadata_dim,
+            class_num=class_num,
         )
         self.model = ToyModelNet(
             image_chns=self.data_channels,
             image_height=self.data_height,
             image_width=self.data_width,
+            class_num=self.class_num,
             num_units=num_units,
             pooling_layer_num=pooling_layer_num,
             kernel_size=kernel_size,
@@ -51,6 +54,7 @@ class ToyModelNet(nn.Module):
         image_chns,
         image_height,
         image_width,
+        class_num,
         num_units,
         kernel_size,
         pooling_layer_num
@@ -81,7 +85,7 @@ class ToyModelNet(nn.Module):
             self.encoder_convs.append(conv)
             self.encoder_batchnorms.append(batchnorm)
 
-        decoder_num_units = num_units[::-1] + (image_chns,)
+        decoder_num_units = num_units[::-1] + (class_num,)
         self.decoder_deconvs = nn.ModuleList()
         self.decoder_batchnorms = nn.ModuleList()
         img_size = image_height // (2 ** len(pooling_layer_num))
@@ -117,5 +121,5 @@ class ToyModelNet(nn.Module):
             x = F.relu(x)
             x = deconv(x)
 
-        x = torch.sigmoid(x)
+        x = F.softmax(x, dim=1)
         return x

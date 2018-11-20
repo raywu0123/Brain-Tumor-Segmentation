@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 load_dotenv('./.env')
 import torch.optim as optim
 
-from .base import Model2DBase
+from .base import AsyncModel2DBase
 
 
-class UNet(Model2DBase):
+class UNet(AsyncModel2DBase):
     def __init__(
             self,
             channels: int = 1,
@@ -16,6 +16,7 @@ class UNet(Model2DBase):
             height: int = 200,
             width: int = 200,
             metadata_dim: int = 0,
+            class_num: int = 2,
             lr: float = 1e-4,
             kernel_size: int = 3,
             floor_num: int = 4,
@@ -28,6 +29,7 @@ class UNet(Model2DBase):
             height=height,
             width=width,
             metadata_dim=metadata_dim,
+            class_num=class_num,
         )
         self.model = UNet_Net(
             image_chns=self.data_channels,
@@ -35,6 +37,7 @@ class UNet(Model2DBase):
             floor_num=floor_num,
             channel_num=channel_num,
             conv_times=conv_times,
+            class_num=class_num,
         )
         self.opt = optim.Adam(params=self.model.parameters(), lr=lr)
         if torch.cuda.is_available():
@@ -49,7 +52,7 @@ class UNet_Net(nn.Module):
         kernel_size,
         channel_num,
         conv_times,
-        class_num=1,
+        class_num,
     ):
         super(UNet_Net, self).__init__()
         self.floor_num = floor_num
@@ -68,7 +71,7 @@ class UNet_Net(nn.Module):
             channel_times = 2 ** floor_idx
             u = up(channel_num * 2 * channel_times, kernel_size, conv_times)
             self.up_layers.append(u)
-        self.out_conv = nn.Conv2d(channel_num, class_num, 1)
+        self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
     def forward(self, x):
         x_out = []
@@ -79,7 +82,7 @@ class UNet_Net(nn.Module):
         for x_down, u in zip(x_out[::-1], self.up_layers):
             x = u(x, x_down)
         x = self.out_conv(x)
-        x = torch.sigmoid(x)
+        x = F.softmax(x, dim=1)
         return x
 
 

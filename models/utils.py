@@ -11,25 +11,35 @@ from albumentations import (
     ElasticTransform,
 )
 
+epsilon = 1e-8
 
-def weighted_binary_cross_entropy(output, target, weights=None):
-    epsilon = 1e-8
-    if weights is not None:
-        assert len(weights) == 2
-        weights = torch.tensor(weights, requires_grad=False)
-        if torch.cuda.is_available:
-            weights = weights.cuda()
-        loss = weights[1] * (target * torch.log(output + epsilon)) + \
-            weights[0] * ((1 - target) * torch.log(1 - output + epsilon))
+
+def weighted_cross_entropy(output, target, weights=None):
+    assert(output.shape == target.shape)
+    if weights is None:
+        weights = (1,) * output.shape[1]
     else:
-        loss = target * torch.log(output + epsilon) + (1 - target) * torch.log(1 - output + epsilon)
+        assert(len(weights) == output.shape[1])
 
-    return torch.neg(torch.mean(loss))
+    weights = torch.Tensor(weights)
+    if torch.cuda.is_available():
+        weights = weights.cuda()
+
+    target = target.transpose(1, -1)
+    output = output.transpose(1, -1)
+    loss = target * weights * torch.log(output + epsilon)
+    loss = -torch.mean(torch.sum(loss, dim=-1))
+    return loss
 
 
 def soft_dice_score(pred, tar):
     # Calculated for whole batch
     assert(pred.shape == tar.shape)
+    assert(pred.shape[1] > 1)
+
+    # Strip background
+    pred = pred[:, 1:]
+    tar = tar[:, 1:]
 
     batch_size = pred.shape[0]
     m1 = pred.view(batch_size, -1)
@@ -55,7 +65,7 @@ def normalize_image(batch_image):
 
 def get_2d_from_3d(batch_volume):
     assert(batch_volume.ndim == 5)
-    batch_volume = np.transpose(batch_volume, (0, 4, 1, 2, 3))
+    batch_volume = np.transpose(batch_volume, (0, 2, 1, 3, 4))
     batch_image = batch_volume.reshape(-1, *batch_volume.shape[-3:])
     return batch_image
 
@@ -63,12 +73,12 @@ def get_2d_from_3d(batch_volume):
 def get_3d_from_2d(batch_image, data_depth):
     assert(batch_image.ndim == 4)
     batch_volume = batch_image.reshape(-1, data_depth, *batch_image.shape[-3:])
-    batch_volume = batch_volume.transpose([0, 2, 3, 4, 1])
+    batch_volume = batch_volume.transpose([0, 2, 1, 3, 4])
     return batch_volume
 
 
 def co_shuffle(batch_data, batch_label):
-    assert(batch_data.shape == batch_label.shape)
+    assert(len(batch_data) == len(batch_label))
     p = np.random.permutation(len(batch_data))
     batch_data = batch_data[p]
     batch_label = batch_label[p]
@@ -125,7 +135,7 @@ class ImageAugmentor:
 
     def co_transform(self, batch_image, batch_label):
         assert(batch_image.shape[-3:] == (self.data_channels, self.data_height, self.data_width))
-        assert(batch_label.shape == batch_image.shape)
+        assert(len(batch_label) == len(batch_image))
 
         transform_fn = self.transform_fns[self.mode]
         return transform_fn(batch_image, batch_label)

@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from utils import MetricClass
 from .utils import (
-    weighted_binary_cross_entropy,
+    weighted_cross_entropy,
     soft_dice_score,
     normalize_image,
     ImageAugmentor,
@@ -53,12 +53,14 @@ class Model2DBase(ModelBase):
             height: int = 200,
             width: int = 200,
             metadata_dim: int = 0,
+            class_num: int = 2,
         ):
         self.data_channels = channels
         self.data_depth = depth
         self.data_height = height
         self.data_width = width
         self.metadata_dim = metadata_dim
+        self.class_num = class_num
         self.comet_experiment = None
 
         self.model = None
@@ -87,7 +89,7 @@ class Model2DBase(ModelBase):
             if i_epoch % verbose_epoch_num == 0:
                 print(
                     f'epoch: {i_epoch}',
-                    f', bce_loss: {np.mean(losses)}',
+                    f', crossentropy_loss: {np.mean(losses)}',
                     f', dice_score: {np.mean(dice_scores)}',
                 )
 
@@ -97,49 +99,55 @@ class Model2DBase(ModelBase):
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
-                        'bce_loss': np.mean(losses),
+                        'crossentropy_loss': np.mean(losses),
                         'dice_score': np.mean(dice_scores),
-                    },
-                        prefix='training')
+                    }, prefix='training', step=i_epoch
+                    )
                     self.comet_experiment.log_multiple_metrics(
                         metrics, prefix='validation', step=i_epoch
                     )
 
     def train_on_batch(self, training_datagenerator, batch_size):
-        # with SimpleTimer('load-data'):
-        image, label = self._get_data_with_generator(
-            training_datagenerator,
-            1,
-        )
-        # with SimpleTimer('data-augmentation'):
-        image, label = self.image_augmentor.co_transform(image, label)
+        image, label = self._get_augmented_image_and_label(datagenerator=training_datagenerator)
         losses = []
         dice_scores = []
 
-        # with SimpleTimer('training'):
         for batch_idx in range(self.data_depth // batch_size):
             self.model.zero_grad()
             batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
             batch_label = label[batch_idx * batch_size: (batch_idx + 1) * batch_size]
+
+            class_weights = np.divide(
+                1., np.mean(batch_label, axis=(0, 2, 3)),
+                out=np.ones(batch_label.shape[1]),
+                where=np.mean(batch_label, axis=(0, 2, 3)) != 0,
+            )
+
             batch_image = get_tensor_from_array(batch_image)
             batch_label = get_tensor_from_array(batch_label)
 
             pred = self.model(batch_image)
-            bce_loss = weighted_binary_cross_entropy(pred, batch_label, weights=(1, 1. / 1e-3))
+            crossentropy_loss = weighted_cross_entropy(pred, batch_label, weights=class_weights)
             dice_score = soft_dice_score(pred, batch_label)
 
-            # total_loss = bce_loss
-            # total_loss = bce_loss - dice_score
-            # total_loss = 1 - dice_score
-            total_loss = bce_loss - torch.log(dice_score)
+            total_loss = crossentropy_loss - torch.log(dice_score)
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             self.opt.step()
 
-            losses.append(bce_loss.item())
+            losses.append(crossentropy_loss.item())
             dice_scores.append(dice_score.item())
 
         return losses, dice_scores
+
+    def _get_augmented_image_and_label(self, **kwargs):
+        datagenerator = kwargs['datagenerator']
+        image, label = self._get_data_with_generator(
+            datagenerator,
+            1,
+        )
+        image, label = self.image_augmentor.co_transform(image, label)
+        return image, label
 
     def _validate(self, validation_datagenerator, batch_size, verbose_epoch_num):
         label_buff = []
@@ -165,6 +173,7 @@ class Model2DBase(ModelBase):
 
         batch_image = get_2d_from_3d(batch_volume)
         batch_label = get_2d_from_3d(batch_label)
+
         batch_image = normalize_image(batch_image)
 
         batch_image, batch_label = co_shuffle(batch_image, batch_label)
@@ -173,8 +182,7 @@ class Model2DBase(ModelBase):
     def _predict_on_2d_images(self, image, batch_size, verbose=False, **kwargs):
         pred_buff = []
         self.model.eval()
-
-        batch_num = math.ceil(image.shape[0] // batch_size)
+        batch_num = math.ceil(image.shape[0] / batch_size)
         iterator = list(range(batch_num))
         if verbose:
             iterator = tqdm(iterator)
@@ -226,6 +234,7 @@ class AsyncModel2DBase(Model2DBase):
         height: int = 200,
         width: int = 200,
         metadata_dim: int = 0,
+        class_num: int = 2,
     ):
         super().__init__(
             channels,
@@ -233,6 +242,7 @@ class AsyncModel2DBase(Model2DBase):
             height,
             width,
             metadata_dim,
+            class_num,
         )
         self.data_queue = mp.Queue()
         self.datagenerator = None
@@ -273,34 +283,11 @@ class AsyncModel2DBase(Model2DBase):
                         metrics, prefix='validation', step=i_epoch
                     )
 
-    def train_on_batch(self, training_datagenerator, batch_size):
+    def _get_augmented_image_and_label(self, **kwargs):
         while self.data_queue.empty():
             time.sleep(0.1)
         image, label = self.data_queue.get()
-        losses = []
-        dice_scores = []
-        for batch_idx in range(self.data_depth // batch_size):
-            self.model.zero_grad()
-            batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            batch_label = label[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            batch_image = get_tensor_from_array(batch_image)
-            batch_label = get_tensor_from_array(batch_label)
-
-            pred = self.model(batch_image)
-            bce_loss = weighted_binary_cross_entropy(pred, batch_label, weights=(1, 1. / 1e-3))
-            dice_score = soft_dice_score(pred, batch_label)
-
-            # total_loss = bce_loss
-            # total_loss = bce_loss - dice_score
-            # total_loss = 1 - dice_score
-            total_loss = bce_loss - torch.log(dice_score)
-            total_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
-            self.opt.step()
-
-            losses.append(bce_loss.item())
-            dice_scores.append(dice_score.item())
-        return losses, dice_scores
+        return image, label
 
     def _put_data_into_queue(self):
         while True:
