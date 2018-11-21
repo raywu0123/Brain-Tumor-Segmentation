@@ -2,6 +2,7 @@ from functools import partial
 
 from .toy_model import ToyModel
 from .u_net import UNet
+from .v_net import VNet
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
@@ -38,5 +39,11 @@ MODELS = {
             **DEFAULT_TRAINING_PARAM,
             'batch_size': 20,
         },
+    ),
+    'v_net': (
+        partial(
+            VNet,
+        ),
+        DEFAULT_TRAINING_PARAM,
     ),
 }
