@@ -8,7 +8,6 @@ import torch
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from utils import MetricClass
 from .utils import (
     weighted_cross_entropy,
     soft_dice_score,
@@ -67,13 +66,14 @@ class ModelBase:
         self.model = torch.load(os.path.join(file_path, 'model'))
         print(f'model loaded from {file_path}')
 
-    def _validate(self, validation_datagenerator, batch_size):
-        batch_data = validation_datagenerator(batch_size=batch_size)
+    def _validate(self, validation_datagenerator, batch_size, metric):
+        batch_data = validation_datagenerator(batch_size=1)
         label = batch_data['label']
         pred = self.predict(batch_data, batch_size)
-        return MetricClass(pred, label).all_metrics()
+        return metric(pred, label).all_metrics()
 
-    def fit_generator(self, training_datagenerator, validation_datagenerator, **kwargs):
+    def fit_generator(self, training_datagenerator, validation_datagenerator, metric, **kwargs):
+        print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
         verbose_epoch_num = kwargs['verbose_epoch_num']
@@ -90,7 +90,7 @@ class ModelBase:
 
                 self.save()
                 metrics = self._validate(
-                    validation_datagenerator, batch_size
+                    validation_datagenerator, batch_size, metric,
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
@@ -216,14 +216,6 @@ class Model2DBase(ModelBase):
         pred_volumes = get_3d_from_2d(pred_images, self.data_depth)
         return pred_volumes
 
-    def fit_dataloader(self, get_training_dataloader, get_validation_dataloader, **kwargs):
-        batch_size = kwargs['batch_size']
-        validation_dataloader = get_validation_dataloader(batch_size, shuffle=True, num_workers=4)
-        for i_batch, sampled_batch in enumerate(validation_dataloader):
-            print(i_batch, type(sampled_batch['volume']))
-            print(sampled_batch['volume'].shape, sampled_batch['label'].shape)
-            input()
-
 
 class AsyncModel2DBase(Model2DBase):
     def __init__(
@@ -246,7 +238,7 @@ class AsyncModel2DBase(Model2DBase):
         self.data_queue = mp.Queue()
         self.datagenerator = None
 
-    def fit_generator(self, training_datagenerator, validation_datagenerator, **kwargs):
+    def fit_generator(self, training_datagenerator, validation_datagenerator, metric, **kwargs):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
@@ -270,7 +262,7 @@ class AsyncModel2DBase(Model2DBase):
 
                 self.save()
                 metrics = self._validate(
-                    validation_datagenerator, batch_size
+                    validation_datagenerator, batch_size, verbose_epoch_num // 10, metric,
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
