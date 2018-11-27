@@ -44,6 +44,9 @@ MODELS = {
         partial(
             VNet,
         ),
-        DEFAULT_TRAINING_PARAM,
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 1,
+        },
     ),
 }
