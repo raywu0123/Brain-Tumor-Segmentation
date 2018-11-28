@@ -25,6 +25,10 @@ def soft_dice(prob_pred, tar):
     return dice_loss
 
 
+def volumewise_mean_score(score_fn, pred_batch, tar_batch):
+    return np.mean([score_fn(pred, tar) for pred, tar in zip(pred_batch, tar_batch)])
+
+
 class MetricBase:
     def __init__(self, pred, tar):
         if pred.shape != tar.shape:
@@ -36,6 +40,11 @@ class MetricBase:
             raise ValueError(
                 f'pred.shape[1] (class_num) should be greater than 1, '
                 f'got class_num = {pred.shape[1]}'
+            )
+        if pred.ndim != 5:
+            raise ValueError(
+                'Input shape of Metric-Class should be (N, C, D, H, W), '
+                f'got {pred.shape} instead.'
             )
         # Strip background
         self.prob_pred = pred[:, 1:]
@@ -65,28 +74,30 @@ class MetricClass(MetricBase):
         }
 
     def soft_dice(self):
-        return soft_dice(self.prob_pred, self.tar)
+        return volumewise_mean_score(soft_dice, self.prob_pred, self.tar)
 
     def hard_dice(self):
-        return medmetric.dc(self.pred, self.tar)
+        return volumewise_mean_score(medmetric.dc, self.pred, self.tar)
 
     def sensitivity(self):
-        return medmetric.sensitivity(self.pred, self.tar)
+        return volumewise_mean_score(medmetric.sensitivity, self.pred, self.tar)
 
     def precision(self):
-        return medmetric.precision(self.pred, self.tar)
+        return volumewise_mean_score(medmetric.precision, self.pred, self.tar)
 
 
 class BRATSMetricClass(MetricBase):
-    def __init__(self, pred, tar):
-        super().__init__(pred, tar)
-        self.prob_pred_complete = pred[:, 1] + pred[:, 2] + pred[:, 3] + pred[:, 4]
-        self.prob_pred_core = pred[:, 1] + pred[:, 3] + pred[:, 4]
-        self.prob_pred_enhancing = pred[:, 4]
+    def __init__(self, prob_pred, tar):
+        super().__init__(prob_pred, tar)
+        self.prob_pred_complete = \
+            prob_pred[:, 1] + prob_pred[:, 2] + prob_pred[:, 3] + prob_pred[:, 4]
+        self.prob_pred_core = prob_pred[:, 1] + prob_pred[:, 3] + prob_pred[:, 4]
+        self.prob_pred_enhancing = prob_pred[:, 4]
 
-        self.pred_complete = (self.prob_pred_complete > 0.5).astype(int)
-        self.pred_core = (self.prob_pred_core > 0.5).astype(int)
-        self.pred_enhancing = (self.prob_pred_enhancing > 0.5).astype(int)
+        pred = hard_max(prob_pred)
+        self.pred_complete = pred[:, 1] + pred[:, 2] + pred[:, 3] + pred[:, 4]
+        self.pred_core = pred[:, 1] + pred[:, 3] + pred[:, 4]
+        self.pred_enhancing = pred[:, 4]
 
         self.tar_complete = tar[:, 1] + tar[:, 2] + tar[:, 3] + tar[:, 4]
         self.tar_core = tar[:, 1] + tar[:, 3] + tar[:, 4]
@@ -111,37 +122,37 @@ class BRATSMetricClass(MetricBase):
         }
 
     def soft_dice_complete(self):
-        return soft_dice(self.prob_pred_complete, self.tar_complete)
+        return volumewise_mean_score(soft_dice, self.prob_pred_complete, self.tar_complete)
 
     def soft_dice_core(self):
-        return soft_dice(self.prob_pred_core, self.tar_core)
+        return volumewise_mean_score(soft_dice, self.prob_pred_core, self.tar_core)
 
     def soft_dice_enhancing(self):
-        return soft_dice(self.prob_pred_enhancing, self.tar_enhancing)
+        return volumewise_mean_score(soft_dice, self.prob_pred_enhancing, self.tar_enhancing)
 
     def hard_dice_complete(self):
-        return medmetric.dc(self.pred_complete, self.tar_complete)
+        return volumewise_mean_score(medmetric.dc, self.pred_complete, self.tar_complete)
 
     def hard_dice_core(self):
-        return medmetric.dc(self.pred_core, self.tar_core)
+        return volumewise_mean_score(medmetric.dc, self.pred_core, self.tar_core)
 
     def hard_dice_enhancing(self):
-        return medmetric.dc(self.pred_enhancing, self.tar_enhancing)
+        return volumewise_mean_score(medmetric.dc, self.pred_enhancing, self.tar_enhancing)
 
     def precision_complete(self):
-        return medmetric.precision(self.pred_complete, self.tar_complete)
+        return volumewise_mean_score(medmetric.precision, self.pred_complete, self.tar_complete)
 
     def precision_core(self):
-        return medmetric.precision(self.pred_core, self.tar_core)
+        return volumewise_mean_score(medmetric.precision, self.pred_core, self.tar_core)
 
     def precision_enhancing(self):
-        return medmetric.precision(self.pred_enhancing, self.tar_enhancing)
+        return volumewise_mean_score(medmetric.precision, self.pred_enhancing, self.tar_enhancing)
 
     def sensitivity_complete(self):
-        return medmetric.sensitivity(self.pred_complete, self.tar_complete)
+        return volumewise_mean_score(medmetric.sensitivity, self.pred_complete, self.tar_complete)
 
     def sensitivity_core(self):
-        return medmetric.sensitivity(self.pred_core, self.tar_core)
+        return volumewise_mean_score(medmetric.sensitivity, self.pred_core, self.tar_core)
 
     def sensitivity_enhancing(self):
-        return medmetric.sensitivity(self.pred_enhancing, self.tar_enhancing)
+        return volumewise_mean_score(medmetric.sensitivity, self.pred_enhancing, self.tar_enhancing)

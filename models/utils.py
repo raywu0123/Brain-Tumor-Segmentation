@@ -38,19 +38,18 @@ def soft_dice_score(pred, tar):
     assert(pred.shape[1] > 1)
 
     # Strip background
-    pred = pred[:, 1:]
-    tar = tar[:, 1:]
+    # pred = pred[:, 1:]
+    # tar = tar[:, 1:]
 
-    batch_size = pred.shape[0]
-    m1 = pred.view(batch_size, -1)
-    m2 = tar.view(batch_size, -1)
+    m1 = pred.view(pred.shape[0] * pred.shape[1], -1)
+    m2 = tar.view(tar.shape[0] * tar.shape[1], -1)
     intersection = (m1 * m2)
 
-    m1 = torch.sum(m1)
-    m2 = torch.sum(m2)
-    intersection = torch.sum(intersection)
+    m1 = torch.sum(m1 ** 2, dim=1)
+    m2 = torch.sum(m2 ** 2, dim=1)
+    intersection = torch.sum(intersection, dim=1)
 
-    dice_score = (2. * intersection + 1) / (m1 + m2 + 1)
+    dice_score = torch.mean((2. * intersection + 1) / (m1 + m2 + 1))
     return dice_score
 
 

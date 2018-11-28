@@ -11,7 +11,8 @@ from preprocess_tools.image_utils import save_array_to_nii
 from .utils import to_one_hot_label
 from utils import BRATSMetricClass
 
-modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
+# modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
+modal_bases = ['Flair.']
 label_base = 'OT.'
 data_extension = '.mha'
 
@@ -20,7 +21,7 @@ class BRATS2015(DataInterface):
     def __init__(self, DATA_DIRS):
         self._metric = BRATSMetricClass
 
-        self.img_channels = 4
+        self.img_channels = len(modal_bases)
         self.img_depth = 155
         self.img_height = self.img_width = 240
         self.metadata_dim = 0
