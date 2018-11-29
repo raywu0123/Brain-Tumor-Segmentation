@@ -11,6 +11,12 @@ from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
 from .utils import to_one_hot_label
 
+from dotenv import load_dotenv
+load_dotenv('./.env')
+NTU_MRI_DIR = os.environ.get('NTU_MRI_DIR')
+NTU_MOCK_TEST_DIR = os.environ.get('NTU_MOCK_TEST_DIR')
+NTU_TEST_DIR = os.environ.get('NTU_TEST_DIR')
+
 
 img_channels = 1
 img_depth = 200
@@ -19,11 +25,21 @@ metadata_dim = 0
 class_num = 2
 
 
+def get_dir(args):
+    if 'mri' in args:
+        return NTU_MRI
+    if 'mocktest' in args:
+        return NTU_MOCK_TEST_DIR
+    if 'test' in args:
+        return NTU_TEST_DIR
+
+
 class NTU_MRI_LOADING_BASE:
-    def __init__(self, DATA_DIR):
-        self.DATA_DIR = DATA_DIR
-        self.image_path = os.path.join(DATA_DIR, 'image')
-        self.label_path = os.path.join(DATA_DIR, 'label')
+    def __init__(self, args):
+
+        self.DATA_DIR = get_dir(args)
+        self.image_path = os.path.join(self.DATA_DIR, 'image')
+        self.label_path = os.path.join(self.DATA_DIR, 'label')
         self.original_niis = {}
 
     def _get_data(self, data_ids, verbose=False):

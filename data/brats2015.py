@@ -10,13 +10,47 @@ from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
 from .utils import to_one_hot_label
 
+from dotenv import load_dotenv
+load_dotenv('./.env')
+BRATS2015_DIR = os.environ.get('BRATS2015_DIR')
+BRATS2015_HGG_DIR = os.path.join(BRATS2015_DIR, './HGG')
+BRATS2015_LGG_DIR = os.path.join(BRATS2015_DIR, './LGG')
+
 #   modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
 label_base = 'OT.'
 data_extension = '.mha'
 
 
+def get_brats_modality(args):
+    modal_bases = []
+    if 'Flair' in args:
+        modal_bases.append('Flair.')
+    if 'T1' in args:
+        modal_bases.append('T1.')
+    if 'T1c' in args:
+        modal_bases.append('T1c.')
+    if 'T2c' in args:
+        modal_bases.append('T2.')
+    #   default
+    if not modal_bases:
+        modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
+    return modal_bases
+
+
+def get_brats_tumorType(args):
+    data_dirs = []
+    if 'hgg' in args:
+        data_dirs.append(BRATS2015_HGG_DIR)
+    if 'lgg' in args:
+        data_dirs.append(BRATS2015_LGG_DIR)
+    #   default
+    if not data_dirs:
+        data_dirs = [BRATS2015_HGG_DIR, BRATS2015_LGG_DIR]
+    return data_dirs
+
+
 class BRATS2015(DataInterface):
-    def __init__(self, modal_bases, DATA_DIRS):
+    def __init__(self, args):
         self.img_channels = 4
         self.img_depth = 155
         self.img_height = self.img_width = 240
@@ -24,11 +58,11 @@ class BRATS2015(DataInterface):
         self.class_num = 5
 
         self.description = 'BRATS2015'
-        self.DATA_DIRS = DATA_DIRS
-        self.modal_bases = modal_bases
+        self.DATA_DIRS = get_brats_tumorType(args)
+        self.modal_bases = get_brats_modality(args)
 
         self.all_ids = []
-        for DATA_DIR in DATA_DIRS:
+        for DATA_DIR in self.DATA_DIRS:
             folder_names = os.listdir(DATA_DIR)
             folder_dirs = [os.path.join(DATA_DIR, foldername) for foldername in folder_names]
             self.all_ids.extend(folder_dirs)

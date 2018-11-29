@@ -14,7 +14,7 @@ np.random.seed(args.global_random_seed)
 from dotenv import load_dotenv
 
 from models import MODELS
-from data.data_providers import get_data_provider
+from data.data_providers import DataProviders
 from utils import parse_exp_id
 
 load_dotenv('./.env')
@@ -76,7 +76,8 @@ def main():
     args.exp_id = os.environ.get('EXP_ID')
     print('EXP_ID:', os.environ.get('EXP_ID'))
 
-    data_provider = get_data_provider(args.data_provider_id)
+    get_data_provider, data_provider_parameters = DataProviders(args.data_provider_id)
+    data_provider = get_data_provider(data_provider_parameters)
     get_model, fit_hyper_parameters = MODELS[args.model_id]
 
     model = get_model(
