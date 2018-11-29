@@ -114,7 +114,7 @@ class Vnet_net(nn.Module):
             kernel_size: int = 5,
             conv_time: int = 2,
             n_layer: int = 4,
-            class_num: int = 2, 
+            class_num: int = 2,
         ):
         super(Vnet_net, self).__init__()
         # To work properly, kernel_size must be odd
