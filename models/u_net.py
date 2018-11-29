@@ -64,12 +64,12 @@ class UNet_Net(nn.Module):
         self.down_layers.append(in_conv)
         for floor_idx in range(floor_num):
             channel_times = 2 ** floor_idx
-            d = down(channel_num * channel_times, kernel_size, conv_times)
+            d = DnConv(channel_num * channel_times, kernel_size, conv_times)
             self.down_layers.append(d)
 
         for floor_idx in range(floor_num)[::-1]:
             channel_times = 2 ** floor_idx
-            u = up(channel_num * 2 * channel_times, kernel_size, conv_times)
+            u = UpConv(channel_num * 2 * channel_times, kernel_size, conv_times)
             self.up_layers.append(u)
         self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
@@ -112,10 +112,10 @@ class Conv_N_Times(nn.Module):
         return x
 
 
-class down(nn.Module):
+class DnConv(nn.Module):
     def __init__(self, in_ch, kernel_size, conv_times):
         out_ch = in_ch * 2
-        super(down, self).__init__()
+        super(DnConv, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
             Conv_N_Times(in_ch, out_ch, kernel_size, conv_times)
@@ -126,9 +126,9 @@ class down(nn.Module):
         return x
 
 
-class up(nn.Module):
+class UpConv(nn.Module):
     def __init__(self, in_ch, kernel_size, conv_times, bilinear=True):
-        super(up, self).__init__()
+        super(UpConv, self).__init__()
         out_ch = in_ch // 2
         self.conv_transpose = nn.ConvTranspose2d(
             in_ch,
