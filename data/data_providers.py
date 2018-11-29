@@ -13,7 +13,7 @@ from .brats2015 import BRATS2015
 
 
 def DataProviders(key):
-    args = key.split(' ')
+    args = key.split('_')
     data_source = args[0]
     del args[0]
     Providers = {
