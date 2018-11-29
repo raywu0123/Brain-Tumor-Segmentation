@@ -10,7 +10,7 @@ from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
 from .utils import to_one_hot_label
 
-#modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
+#   modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
 label_base = 'OT.'
 data_extension = '.mha'
 
