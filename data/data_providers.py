@@ -27,7 +27,7 @@ BRATS2015_LGG_DIR = os.path.join(BRATS2015_DIR, './LGG')
 #   }
 
 
-def get_ntu_data(key):
+def get_ntu_provider(key):
     if key.find('mri'):
         return NTU_MRI(NTU_MRI_DIR)
     elif key.find('mock'):
@@ -36,7 +36,7 @@ def get_ntu_data(key):
         return NTU_MRI(NTU_TEST_DIR)
 
 
-def get_modality(args):
+def get_brats_modality(args):
     modal_bases = []
     if 'Flair' in args:
         modal_bases.append('Flair.')
@@ -49,7 +49,7 @@ def get_modality(args):
     return modal_bases
 
 
-def get_brats_dir(args):
+def get_brats_tumorType(args):
     data_dirs = []
     if 'hgg' in args:
         data_dirs.append(BRATS2015_HGG_DIR)
@@ -58,20 +58,20 @@ def get_brats_dir(args):
     return data_dirs
 
 
-def get_brats_data(key):
+def get_brats_provider(key):
     modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
     data_dirs = [BRATS2015_LGG_DIR, BRATS2015_HGG_DIR]
     if key == 'brats2015':
         return BRATS2015(modal_bases, data_dirs)
     else:
         args = key.split('_')
-        modal_bases = get_modality(args)
-        data_dirs = get_brats_dir(args)
+        modal_bases = get_brats_modality(args)
+        data_dirs = get_brats_tumorType(args)
         return BRATS2015(modal_bases, data_dirs)
 
 
 def get_data_provider(key):
     if key.find('ntu'):
-        return get_ntu_data(key)
+        return get_ntu_provider(key)
     elif key.find('brats2015'):
-        return get_brats_data(key)
+        return get_brats_provider(key)
