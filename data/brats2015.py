@@ -10,13 +10,13 @@ from .base import DataInterface
 from preprocess_tools.image_utils import save_array_to_nii
 from .utils import to_one_hot_label
 
-modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
+#modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
 label_base = 'OT.'
 data_extension = '.mha'
 
 
 class BRATS2015(DataInterface):
-    def __init__(self, DATA_DIRS):
+    def __init__(self, modal_bases, DATA_DIRS):
         self.img_channels = 4
         self.img_depth = 155
         self.img_height = self.img_width = 240
@@ -25,6 +25,7 @@ class BRATS2015(DataInterface):
 
         self.description = 'BRATS2015'
         self.DATA_DIRS = DATA_DIRS
+        self.modal_bases = modal_bases
 
         self.all_ids = []
         for DATA_DIR in DATA_DIRS:
@@ -38,7 +39,7 @@ class BRATS2015(DataInterface):
               f'validating on {len(self.test_ids)} samples')
 
     def _get_image_and_label(self, data_id):
-        image = [self._get_image_from_folder(data_id, base) for base in modal_bases]
+        image = [self._get_image_from_folder(data_id, base) for base in self.modal_bases]
         image = np.asarray(image)
         label = self._get_image_from_folder(data_id, label_base)
         label = to_one_hot_label(label, self.class_num)
