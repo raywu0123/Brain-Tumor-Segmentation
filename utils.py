@@ -2,6 +2,7 @@ import numpy as np
 from medpy import metric as medmetric
 
 from data.utils import to_one_hot_label
+from models.utils import epsilon
 
 
 def parse_exp_id(exp_id_string):
@@ -20,8 +21,11 @@ def hard_max(x):
 
 
 def soft_dice(prob_pred, tar):
+    if not np.all(np.unique(tar) == np.array([0, 1])):
+        raise ValueError('Target data should be binary.')
     intersection = tar * prob_pred
-    dice_loss = (2 * np.sum(intersection) + 1) / (np.sum(prob_pred) + np.sum(tar) + 1)
+    dice_loss = (2 * np.sum(intersection) + epsilon) \
+        / (np.sum(prob_pred ** 2) + np.sum(tar ** 2) + epsilon)
     return dice_loss
 
 

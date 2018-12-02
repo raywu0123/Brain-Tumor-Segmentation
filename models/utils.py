@@ -33,23 +33,26 @@ def weighted_cross_entropy(output, target, weights=None):
 
 
 def soft_dice_score(pred, tar):
-    # Calculated for whole batch
-    assert(pred.shape == tar.shape)
-    assert(pred.shape[1] > 1)
-
+    if not (isinstance(pred, torch.Tensor) and isinstance(pred, torch.Tensor)):
+        raise TypeError(f'Input should be a torch Tensor, got {type(pred)} and {type(tar)}')
+    if not pred.shape == tar.shape:
+        raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {tar.shape}')
+    if not pred.shape[1] > 1:
+        raise ValueError(f'Number of channels should be greater than 1, '
+                         f'got data with shape {pred.shape}')
     # Strip background
-    # pred = pred[:, 1:]
-    # tar = tar[:, 1:]
+    pred = pred[:, 1:]
+    tar = tar[:, 1:]
 
-    m1 = pred.view(pred.shape[0] * pred.shape[1], -1)
-    m2 = tar.view(tar.shape[0] * tar.shape[1], -1)
-    intersection = (m1 * m2)
+    m1 = pred.view(pred.shape[0], pred.shape[1], -1)
+    m2 = tar.view(tar.shape[0], tar.shape[1], -1)
+    intersection = m1 * m2
 
-    m1 = torch.sum(m1 ** 2, dim=1)
-    m2 = torch.sum(m2 ** 2, dim=1)
-    intersection = torch.sum(intersection, dim=1)
+    m1 = torch.sum(m1 ** 2)
+    m2 = torch.sum(m2 ** 2)
+    intersection = torch.sum(intersection)
 
-    dice_score = torch.mean((2. * intersection + 1) / (m1 + m2 + 1))
+    dice_score = torch.mean((2. * intersection + epsilon) / (m1 + m2 + epsilon))
     return dice_score
 
 

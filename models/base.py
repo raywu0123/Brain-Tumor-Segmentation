@@ -154,16 +154,14 @@ class Model2DBase(ModelBase):
                 out=np.ones(batch_label.shape[1]),
                 where=np.mean(batch_label, axis=(0, 2, 3)) != 0,
             )
-
             batch_image = get_tensor_from_array(batch_image)
             batch_label = get_tensor_from_array(batch_label)
 
             pred = self.model(batch_image)
             crossentropy_loss = weighted_cross_entropy(pred, batch_label, weights=class_weights)
             dice_score = soft_dice_score(pred, batch_label)
+            total_loss = crossentropy_loss - torch.log(dice_score)
 
-            # total_loss = crossentropy_loss - torch.log(dice_score)
-            total_loss = -dice_score
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             self.opt.step()
@@ -271,27 +269,27 @@ class AsyncModel2DBase(Model2DBase):
         process = mp.Process(target=self._put_data_into_queue)
         process.start()
 
-        for i_epoch in range(epoch_num):
+        for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
             losses, dice_scores = self.train_on_batch(training_datagenerator, batch_size)
-            if i_epoch % verbose_epoch_num == 0:
+            if self.i_epoch % verbose_epoch_num == 0:
                 print(
-                    f'epoch: {i_epoch}',
+                    f'epoch: {self.i_epoch}',
                     f', bce_loss: {np.mean(losses)}',
                     f', dice_score: {np.mean(dice_scores)}',
                 )
 
                 self.save()
                 metrics = self._validate(
-                    validation_datagenerator, batch_size, verbose_epoch_num // 10, metric,
+                    validation_datagenerator, batch_size, metric,
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
                         'bce_loss': np.mean(losses),
                         'dice_score': np.mean(dice_scores),
-                    },
-                        prefix='training')
+                    }, prefix='training', step=self.i_epoch
+                    )
                     self.comet_experiment.log_multiple_metrics(
-                        metrics, prefix='validation', step=i_epoch
+                        metrics, prefix='validation', step=self.i_epoch
                     )
 
     def _get_augmented_image_and_label(self, **kwargs):
