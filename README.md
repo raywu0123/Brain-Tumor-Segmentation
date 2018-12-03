@@ -17,29 +17,35 @@ cp .env.example .env
 
 Run with data-generator (recommended)
 ```
-python main.py -m <model_id> -d <data_provider_id> -g
+python main.py -m <model_id> -d <data_provider_id> -ug
 ```
 
 * Please refer to `models/__init__.py` for available model_ids,
 and `data/data_providers.py` for available data_provider_ids.  
 * For other arguments, please refer to `parser.py`
 
-### 4. Syntax Linting
+### 4. Resume from Checkpoint
+
+```
+python main.py --checkpoint_dir <checkpoint_dir> -ug
+``` 
+
+### 5. Syntax Linting
 ```
 python -m flake8 .
 ```
 
-### 5. Run Tests
+### 6. Run Tests
 ```
 python -m unittest
 ```
 
-### 6. Logging Results to Comet
+### 7. Logging Results to Comet
 
 a. Add your comet api-key to `.env` and restart your virtual environment.  
 b. 
 ``` 
-python main.py -m <model_id> -d <data_provider_id> -g --comet
+python main.py -m <model_id> -d <data_provider_id> -ug --comet
 ```
 
 ## Data Configuration

@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from utils import MetricClass
+from utils import hard_max
 
 
 class MetricTestCase(TestCase):
@@ -15,7 +15,7 @@ class MetricTestCase(TestCase):
         )
 
     def test_hard_max(self):
-        hard_max_x = MetricClass.hard_max(self.x)
+        hard_max_x = hard_max(self.x)
         self.assertEqual(
             np.all(
                 hard_max_x == np.array(

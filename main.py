@@ -48,18 +48,21 @@ def flow(
         model.fit_generator(
             training_datagenerator=data_provider.training_datagenerator,
             validation_datagenerator=data_provider.testing_datagenerator,
+            metric=data_provider.metric,
             **fit_hyper_parameters,
         )
     elif args.use_dataloader:
         model.fit_dataloader(
             get_training_dataloader=data_provider.get_training_dataloader,
             get_validation_dataloader=data_provider.get_testing_dataloader,
+            metric=data_provider.metric,
             **fit_hyper_parameters,
         )
     else:
         model.fit(
             training_data=data_provider.get_training_data(),
             validation_data=data_provider.get_testing_data(),
+            metric=data_provider.metric,
         )
 
 
@@ -83,6 +86,9 @@ def main():
     model = get_model(
         **data_provider.get_data_format(),
     )
+
+    if args.checkpoint_dir is not None:
+        model.load(args.checkpoint_dir)
 
     if args.do_comet:
         experiment.log_multiple_params(vars(args))
