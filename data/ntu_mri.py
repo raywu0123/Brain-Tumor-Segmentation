@@ -5,10 +5,8 @@ import nibabel as nib
 from tqdm import tqdm
 import numpy as np
 np.random.seed = 0
-from torch.utils.data import DataLoader, Dataset
 
-from .base import DataInterface
-from preprocess_tools.image_utils import save_array_to_nii
+from .base import DataGeneratorFactoryBase
 from .utils import to_one_hot_label
 
 
@@ -19,12 +17,19 @@ metadata_dim = 0
 class_num = 2
 
 
-class NTU_MRI_LOADING_BASE:
-    def __init__(self, DATA_DIR):
-        self.DATA_DIR = DATA_DIR
-        self.image_path = os.path.join(DATA_DIR, 'image')
-        self.label_path = os.path.join(DATA_DIR, 'label')
-        self.original_niis = {}
+class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
+    def __init__(self, data_dir):
+        self.DATA_DIR = data_dir
+        self.image_path = os.path.join(data_dir, 'image')
+        self.label_path = os.path.join(data_dir, 'label')
+        self.description = 'NTU_MRI'
+        self.all_ids = os.listdir(self.image_path)
+        self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
+        self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
+
+    def _data_generator(self, data_ids, batch_size):
+        selected_ids = np.random.choice(data_ids, batch_size)
+        return self._get_data(selected_ids)
 
     def _get_data(self, data_ids, verbose=False):
         batch_volume = np.empty((
@@ -66,52 +71,16 @@ class NTU_MRI_LOADING_BASE:
         else:
             label = None
 
-        # self.original_niis[data_id] = image_obj
         return image, label
 
+    def get_testing_data_generator(self, **kwargs):
+        return partial(self._data_generator, self.test_ids)
 
-class NTU_MRI(DataInterface, NTU_MRI_LOADING_BASE):
-    def __init__(self, DATA_DIR):
-        super().__init__(DATA_DIR)
-        self.description = 'NTU_MRI'
-        self.all_ids = os.listdir(self.image_path)
-        self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
-        self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
-
-    def _datagenerator(self, data_ids, batch_size):
-        selected_ids = np.random.choice(data_ids, batch_size)
-        return self._get_data(selected_ids)
+    def get_training_data_generator(self, **kwargs):
+        return partial(self._data_generator, self.train_ids)
 
     @property
-    def testing_datagenerator(self):
-        return partial(self._datagenerator, self.test_ids)
-
-    @property
-    def training_datagenerator(self):
-        return partial(self._datagenerator, self.train_ids)
-
-    def get_training_data(self):
-        return self._get_data(self.train_ids, verbose=True)
-
-    def get_testing_data(self):
-        return self._get_data(self.test_ids, verbose=True)
-
-    def get_all_data(self):
-        return self._get_data(self.all_ids, verbose=True)
-
-    def get_training_dataloader(self, batch_size, shuffle, num_workers):
-        return DataLoader(
-            NTU_MRI_DATASET(self.train_ids, self.DATA_DIR),
-            batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
-        )
-
-    def get_testing_dataloader(self, batch_size, shuffle, num_workers):
-        return DataLoader(
-            NTU_MRI_DATASET(self.test_ids, self.DATA_DIR),
-            batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
-        )
-
-    def get_data_format(self):
+    def data_format(self):
         data_format = {
             "channels": img_channels,
             "depth": img_depth,
@@ -121,19 +90,3 @@ class NTU_MRI(DataInterface, NTU_MRI_LOADING_BASE):
             "class_num": class_num,
         }
         return data_format
-
-    def save_result(self, np_array, save_path, data_id):
-        save_array_to_nii(np_array, save_path, self.original_niis[data_id])
-
-
-class NTU_MRI_DATASET(Dataset, NTU_MRI_LOADING_BASE):
-    def __init__(self, data_ids, DATA_DIR):
-        super().__init__(DATA_DIR)
-        self.data_ids = data_ids
-
-    def __len__(self):
-        return len(self.data_ids)
-
-    def __getitem__(self, idx):
-        image, label = self._get_image_and_label(self.data_ids[idx])
-        return {'volume': image, 'label': label, 'metadata': []}

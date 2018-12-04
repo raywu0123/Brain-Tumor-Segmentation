@@ -6,19 +6,17 @@ import SimpleITK as sitk
 import numpy as np
 np.random.seed = 0
 
-from .base import DataInterface
-from preprocess_tools.image_utils import save_array_to_nii
+from .base import DataGeneratorFactoryBase
 from .utils import to_one_hot_label
 from utils import BRATSMetricClass
 
-# modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
 modal_bases = ['Flair.']
 label_base = 'OT.'
 data_extension = '.mha'
 
 
-class BRATS2015(DataInterface):
-    def __init__(self, DATA_DIRS):
+class Brats2015DataGeneratorFactory(DataGeneratorFactoryBase):
+    def __init__(self, data_dirs):
         self._metric = BRATSMetricClass
 
         self.img_channels = len(modal_bases)
@@ -28,12 +26,12 @@ class BRATS2015(DataInterface):
         self.class_num = 5
 
         self.description = 'BRATS2015'
-        self.DATA_DIRS = DATA_DIRS
+        self.DATA_DIRS = data_dirs
 
         self.all_ids = []
-        for DATA_DIR in DATA_DIRS:
-            folder_names = os.listdir(DATA_DIR)
-            folder_dirs = [os.path.join(DATA_DIR, foldername) for foldername in folder_names]
+        for data_dir in data_dirs:
+            folder_names = os.listdir(data_dir)
+            folder_dirs = [os.path.join(data_dir, foldername) for foldername in folder_names]
             self.all_ids.extend(folder_dirs)
 
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
@@ -62,17 +60,15 @@ class BRATS2015(DataInterface):
         image_array = sitk.GetArrayFromImage(image)
         return image_array
 
-    def _datagenerator(self, data_ids, batch_size):
+    def _data_generator(self, data_ids, batch_size):
         selected_ids = np.random.choice(data_ids, batch_size)
         return self._get_data(selected_ids)
 
-    @property
-    def testing_datagenerator(self):
-        return partial(self._datagenerator, self.test_ids)
+    def get_testing_data_generator(self, **kwargs):
+        return partial(self._data_generator, self.test_ids)
 
-    @property
-    def training_datagenerator(self):
-        return partial(self._datagenerator, self.train_ids)
+    def get_training_data_generator(self, **kwargs):
+        return partial(self._data_generator, self.train_ids)
 
     def _get_data(self, data_ids, verbose=False):
         batch_volume = np.empty((
@@ -99,16 +95,8 @@ class BRATS2015(DataInterface):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
         return {'volume': batch_volume, 'metadata': None, 'label': batch_label}
 
-    def get_training_data(self):
-        return self._get_data(self.train_ids, verbose=True)
-
-    def get_testing_data(self):
-        return self._get_data(self.test_ids, verbose=True)
-
-    def get_all_data(self):
-        return self._get_data(self.all_ids, verbose=True)
-
-    def get_data_format(self):
+    @property
+    def data_format(self):
         data_format = {
             "channels": self.img_channels,
             "depth": self.img_depth,
@@ -118,6 +106,3 @@ class BRATS2015(DataInterface):
             "class_num": self.class_num,
         }
         return data_format
-
-    def save_result(self, np_array, save_path, data_id):
-        save_array_to_nii(np_array, save_path, self.original_niis[data_id])

@@ -14,7 +14,7 @@ np.random.seed(args.global_random_seed)
 from dotenv import load_dotenv
 
 from models import MODELS
-from data.data_providers import DataProviders
+from data import DataProviders
 from utils import parse_exp_id
 
 load_dotenv('./.env')
@@ -44,26 +44,12 @@ def flow(
     if args.do_comet:
         fit_hyper_parameters['experiment'] = experiment
 
-    if args.use_generator:
-        model.fit_generator(
-            training_datagenerator=data_provider.training_datagenerator,
-            validation_datagenerator=data_provider.testing_datagenerator,
-            metric=data_provider.metric,
-            **fit_hyper_parameters,
-        )
-    elif args.use_dataloader:
-        model.fit_dataloader(
-            get_training_dataloader=data_provider.get_training_dataloader,
-            get_validation_dataloader=data_provider.get_testing_dataloader,
-            metric=data_provider.metric,
-            **fit_hyper_parameters,
-        )
-    else:
-        model.fit(
-            training_data=data_provider.get_training_data(),
-            validation_data=data_provider.get_testing_data(),
-            metric=data_provider.metric,
-        )
+    model.fit_generator(
+        training_data_generator=data_provider.get_training_data_generator(),
+        validation_data_generator=data_provider.get_testing_data_generator(),
+        metric=data_provider.metric,
+        **fit_hyper_parameters,
+    )
 
 
 def main():
@@ -84,7 +70,7 @@ def main():
     get_model, fit_hyper_parameters = MODELS[args.model_id]
 
     model = get_model(
-        **data_provider.get_data_format(),
+        **data_provider.data_format,
     )
 
     if args.checkpoint_dir is not None:

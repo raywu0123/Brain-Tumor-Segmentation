@@ -37,9 +37,9 @@ class Model3DBase(ModelBase):
             class_num=class_num,
         )
 
-    def train_on_batch(self, training_datagenerator, batch_size):
+    def train_on_batch(self, training_data_generator, batch_size):
 
-        batch_data = training_datagenerator(batch_size=batch_size)
+        batch_data = training_data_generator(batch_size=batch_size)
         data, label = batch_data['volume'], batch_data['label']
         data = get_tensor_from_array(data)
         class_weight = np.divide(

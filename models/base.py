@@ -53,7 +53,7 @@ class ModelBase:
     def fit_dataloader(self, get_training_dataloader, get_validation_dataloader, **kwargs):
         raise NotImplementedError('fit_dataloader not implemented')
 
-    def train_on_batch(self, training_datagenerator, batch_size):
+    def train_on_batch(self, training_data_generator, batch_size):
         raise NotImplementedError('fit_dataloader not implemented')
 
     def predict(self, test_data, batch_size, **kwargs):
@@ -77,13 +77,13 @@ class ModelBase:
         self.i_epoch = checkpoint['epoch'] + 1
         print(f'model loaded from {file_path}')
 
-    def _validate(self, validation_datagenerator, batch_size, metric):
-        batch_data = validation_datagenerator(batch_size=1)
+    def _validate(self, validation_data_generator, batch_size, metric):
+        batch_data = validation_data_generator(batch_size=1)
         label = batch_data['label']
         pred = self.predict(batch_data, batch_size)
         return metric(pred, label).all_metrics()
 
-    def fit_generator(self, training_datagenerator, validation_datagenerator, metric, **kwargs):
+    def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
@@ -92,7 +92,7 @@ class ModelBase:
             self.comet_experiment = kwargs['experiment']
 
         for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
-            loss, dice_score = self.train_on_batch(training_datagenerator, batch_size)
+            loss, dice_score = self.train_on_batch(training_data_generator, batch_size)
             if self.i_epoch % verbose_epoch_num == 0:
                 print(
                     f'epoch: {self.i_epoch}',
@@ -101,7 +101,7 @@ class ModelBase:
                 )
                 self.save()
                 metrics = self._validate(
-                    validation_datagenerator, batch_size, metric,
+                    validation_data_generator, batch_size, metric,
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
@@ -140,8 +140,8 @@ class Model2DBase(ModelBase):
             mode='albumentations',
         )
 
-    def train_on_batch(self, training_datagenerator, batch_size):
-        image, label = self._get_augmented_image_and_label(datagenerator=training_datagenerator)
+    def train_on_batch(self, training_data_generator, batch_size):
+        image, label = self._get_augmented_image_and_label(data_generator=training_data_generator)
         losses = []
         dice_scores = []
 
@@ -175,9 +175,9 @@ class Model2DBase(ModelBase):
         return losses, dice_scores
 
     def _get_augmented_image_and_label(self, **kwargs):
-        datagenerator = kwargs['datagenerator']
+        data_generator = kwargs['data_generator']
         image, label = self._get_data_with_generator(
-            datagenerator,
+            data_generator,
             1,
         )
         image, label = self.image_augmentor.co_transform(image, label)
@@ -254,9 +254,9 @@ class AsyncModel2DBase(Model2DBase):
             class_num,
         )
         self.data_queue = mp.Queue()
-        self.datagenerator = None
+        self.data_generator = None
 
-    def fit_generator(self, training_datagenerator, validation_datagenerator, metric, **kwargs):
+    def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
@@ -265,12 +265,12 @@ class AsyncModel2DBase(Model2DBase):
         if 'experiment' in kwargs:
             self.comet_experiment = kwargs['experiment']
 
-        self.datagenerator = training_datagenerator
+        self.data_generator = training_data_generator
         process = mp.Process(target=self._put_data_into_queue)
         process.start()
 
         for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
-            losses, dice_scores = self.train_on_batch(training_datagenerator, batch_size)
+            losses, dice_scores = self.train_on_batch(training_data_generator, batch_size)
             if self.i_epoch % verbose_epoch_num == 0:
                 print(
                     f'epoch: {self.i_epoch}',
@@ -280,7 +280,7 @@ class AsyncModel2DBase(Model2DBase):
 
                 self.save()
                 metrics = self._validate(
-                    validation_datagenerator, batch_size, metric,
+                    validation_data_generator, batch_size, metric,
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_multiple_metrics({
@@ -302,7 +302,7 @@ class AsyncModel2DBase(Model2DBase):
         while True:
             if self.data_queue.qsize() < 10:
                 image, label = self._get_data_with_generator(
-                    self.datagenerator,
+                    self.data_generator,
                     1,
                 )
                 image, label = self.image_augmentor.co_transform(image, label)
