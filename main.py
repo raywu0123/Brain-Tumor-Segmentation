@@ -13,9 +13,10 @@ np.random.seed(args.global_random_seed)
 
 from dotenv import load_dotenv
 
-from models import MODELS
-from data.data_generator_factories import DataProviders
+from models import ModelHub
+from data.data_generator_factories import DataProviderHub
 from utils import parse_exp_id
+from trainers.pytorch_trainer import PytorchTrainer
 
 load_dotenv('./.env')
 RESULT_DIR = os.environ.get('RESULT_DIR')
@@ -35,16 +36,13 @@ if args.do_comet:
 
 def flow(
         data_provider,
-        model,
+        trainer,
         fit_hyper_parameters=None,
     ):
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
-    if args.do_comet:
-        fit_hyper_parameters['experiment'] = experiment
-
-    model.fit_generator(
+    trainer.fit_generator(
         training_data_generator=data_provider.get_training_data_generator(),
         validation_data_generator=data_provider.get_testing_data_generator(),
         metric=data_provider.metric,
@@ -53,6 +51,9 @@ def flow(
 
 
 def main():
+    if args.do_comet:
+        experiment.log_multiple_params(vars(args))
+
     if args.checkpoint_dir is not None:
         folder_name = os.path.basename(os.path.normpath(args.checkpoint_dir))
         model_id, data_provider_id, time_stamp = parse_exp_id(folder_name)
@@ -65,23 +66,22 @@ def main():
     args.exp_id = os.environ.get('EXP_ID')
     print('EXP_ID:', os.environ.get('EXP_ID'))
 
-    get_data_provider, data_provider_parameters = DataProviders[args.data_provider_id]
+    get_data_provider, data_provider_parameters = DataProviderHub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
-    get_model, fit_hyper_parameters = MODELS[args.model_id]
 
-    model = get_model(
-        data_provider.data_format,
-    )
-
+    get_model, fit_hyper_parameters = ModelHub[args.model_id]
+    model = get_model(data_provider.data_format)
     if args.checkpoint_dir is not None:
         model.load(args.checkpoint_dir)
 
-    if args.do_comet:
-        experiment.log_multiple_params(vars(args))
+    trainer = PytorchTrainer(
+        model=model,
+        comet_experiment=experiment
+    )
 
     flow(
         data_provider=data_provider,
-        model=model,
+        trainer=trainer,
         fit_hyper_parameters=fit_hyper_parameters,
     )
 

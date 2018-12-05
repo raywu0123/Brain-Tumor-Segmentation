@@ -15,7 +15,7 @@ BRATS2015_DIR = os.environ.get('BRATS2015_DIR')
 BRATS2015_HGG_DIR = os.path.join(BRATS2015_DIR, './HGG')
 BRATS2015_LGG_DIR = os.path.join(BRATS2015_DIR, './LGG')
 
-DataProviders = {
+DataProviderHub = {
     'ntu_mri': (NtuMriDataGeneratorFactory, NTU_MRI_DIR),
     'ntu_mock_test': (NtuMriDataGeneratorFactory, NTU_MOCK_TEST_DIR),
     'ntu_test': (NtuMriDataGeneratorFactory, NTU_TEST_DIR),

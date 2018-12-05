@@ -8,8 +8,8 @@ from parser import brain_tumor_argparse
 parser = brain_tumor_argparse()
 args = parser.parse_args()
 
-from models import MODELS
-from data.data_generator_factories import DataProviders
+from models import ModelHub
+from data.data_generator_factories import DataProviderHub
 from utils import parse_exp_id
 load_dotenv('./.env')
 
@@ -74,10 +74,10 @@ if __name__ == '__main__':
     model_id, data_id, time_stamp = parse_exp_id(exp_id)
     os.environ['EXP_ID'] = exp_id
 
-    get_data_provider, data_provider_parameters = DataProviders[args.data_provider_id]
+    get_data_provider, data_provider_parameters = DataProviderHub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
 
-    get_model, fit_hyper_parameters = MODELS[model_id]
+    get_model, fit_hyper_parameters = ModelHub[model_id]
     model = get_model(
         **data_provider.get_data_format(),
     )

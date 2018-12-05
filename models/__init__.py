@@ -11,7 +11,7 @@ DEFAULT_TRAINING_PARAM = {
 }
 
 
-MODELS = {
+ModelHub = {
     'toy_model': (
         partial(
             ToyModel,

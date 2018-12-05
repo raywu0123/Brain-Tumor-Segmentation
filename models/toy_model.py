@@ -1,49 +1,19 @@
-import os
-
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from dotenv import load_dotenv
 
-from .base import Model2DBase
-
-load_dotenv('./.env')
-RESULT_DIR_BASE = os.environ.get('RESULT_DIR')
+from .base import PytorchModelBase
 
 
-class ToyModel(Model2DBase):
-
-    def __init__(
-            self,
-            data_format: dict,
-            num_units: [int] = (32, 32, 64, 64, 128),
-            pooling_layer_num: [int] = (1, 3),
-            kernel_size: int = 3,
-            lr: float = 1e-4,
-        ):
-        super(ToyModel, self).__init__(data_format)
-        self.model = ToyModelNet(
-            data_format=data_format,
-            num_units=num_units,
-            pooling_layer_num=pooling_layer_num,
-            kernel_size=kernel_size,
-        )
-        self.opt = optim.Adam(params=self.model.parameters(), lr=lr)
-        if torch.cuda.is_available():
-            self.model.cuda()
-
-
-class ToyModelNet(nn.Module):
+class ToyModel(PytorchModelBase):
 
     def __init__(
         self,
-        data_format,
-        num_units,
-        kernel_size,
-        pooling_layer_num
+        data_format: dict,
+        num_units: [int] = (32, 32, 64, 64, 128),
+        pooling_layer_num: [int] = (1, 3),
+        kernel_size: int = 3,
     ):
-        super(ToyModelNet, self).__init__()
+        super(ToyModel, self).__init__()
         self.image_chns = data_format['channels']
         self.image_height = data_format['height']
         self.image_width = data_format['width']
@@ -108,3 +78,11 @@ class ToyModelNet(nn.Module):
 
         x = F.softmax(x, dim=1)
         return x
+
+    def fit_generator(self, training_data_generator, validation_data_generator, **kwargs):
+        # TODO
+        pass
+
+    def predict(self, test_data, **kwargs):
+        # TODO
+        pass
