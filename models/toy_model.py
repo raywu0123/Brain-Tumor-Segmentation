@@ -2,6 +2,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
+from .batch_samplers.two_dim import TwoDimBatchSampler
+from .loss_functions import ce_minus_log_dice
+from .utils import get_tensor_from_array
 
 
 class ToyModel(PytorchModelBase):
@@ -13,7 +16,10 @@ class ToyModel(PytorchModelBase):
         pooling_layer_num: [int] = (1, 3),
         kernel_size: int = 3,
     ):
-        super(ToyModel, self).__init__()
+        super(ToyModel, self).__init__(
+            batch_sampler=TwoDimBatchSampler(),
+            loss_fn=ce_minus_log_dice,
+        )
         self.image_chns = data_format['channels']
         self.image_height = data_format['height']
         self.image_width = data_format['width']
@@ -65,7 +71,7 @@ class ToyModel(PytorchModelBase):
             self.decoder_batchnorms.append(batchnorm)
 
     def forward(self, inp):
-        x = inp
+        x = get_tensor_from_array(inp)
         for conv, batchnorm in zip(self.encoder_convs, self.encoder_batchnorms):
             x = batchnorm(x)
             x = F.relu(x)
@@ -78,11 +84,3 @@ class ToyModel(PytorchModelBase):
 
         x = F.softmax(x, dim=1)
         return x
-
-    def fit_generator(self, training_data_generator, validation_data_generator, **kwargs):
-        # TODO
-        pass
-
-    def predict(self, test_data, **kwargs):
-        # TODO
-        pass

@@ -11,50 +11,6 @@ from albumentations import (
     ElasticTransform,
 )
 
-epsilon = 1e-8
-
-
-def weighted_cross_entropy(output, target, weights=None):
-    assert(output.shape == target.shape)
-    if weights is None:
-        weights = (1,) * output.shape[1]
-    else:
-        assert(len(weights) == output.shape[1])
-
-    weights = torch.Tensor(weights)
-    if torch.cuda.is_available():
-        weights = weights.cuda()
-
-    target = target.transpose(1, -1)
-    output = output.transpose(1, -1)
-    loss = target * weights * torch.log(output + epsilon)
-    loss = -torch.mean(torch.sum(loss, dim=-1))
-    return loss
-
-
-def soft_dice_score(pred, tar):
-    if not (isinstance(pred, torch.Tensor) and isinstance(pred, torch.Tensor)):
-        raise TypeError(f'Input should be a torch Tensor, got {type(pred)} and {type(tar)}')
-    if not pred.shape == tar.shape:
-        raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {tar.shape}')
-    if not pred.shape[1] > 1:
-        raise ValueError(f'Number of channels should be greater than 1, '
-                         f'got data with shape {pred.shape}')
-    # Strip background
-    pred = pred[:, 1:]
-    tar = tar[:, 1:]
-
-    m1 = pred.view(pred.shape[0], pred.shape[1], -1)
-    m2 = tar.view(tar.shape[0], tar.shape[1], -1)
-    intersection = m1 * m2
-
-    m1 = torch.sum(m1 ** 2)
-    m2 = torch.sum(m2 ** 2)
-    intersection = torch.sum(intersection)
-
-    dice_score = torch.mean((2. * intersection + epsilon) / (m1 + m2 + epsilon))
-    return dice_score
-
 
 def normalize_image(batch_image):
     assert(batch_image.ndim == 4)
@@ -63,20 +19,6 @@ def normalize_image(batch_image):
     batch_image = (batch_image - np.mean(batch_image, axis=(1, 2, 3), keepdims=True)) \
         / (std + std_is_zero.astype(float))
     return batch_image
-
-
-def get_2d_from_3d(batch_volume):
-    assert(batch_volume.ndim == 5)
-    batch_volume = np.transpose(batch_volume, (0, 2, 1, 3, 4))
-    batch_image = batch_volume.reshape(-1, *batch_volume.shape[-3:])
-    return batch_image
-
-
-def get_3d_from_2d(batch_image, data_depth):
-    assert(batch_image.ndim == 4)
-    batch_volume = batch_image.reshape(-1, data_depth, *batch_image.shape[-3:])
-    batch_volume = batch_volume.transpose([0, 2, 1, 3, 4])
-    return batch_volume
 
 
 def co_shuffle(batch_data, batch_label):
@@ -92,6 +34,17 @@ def get_tensor_from_array(array):
     if torch.cuda.is_available():
         tensor = tensor.cuda()
     return tensor
+
+
+def summarize_logs(logs: [dict]) -> dict:
+    summary = {}
+    if len(logs) == 0:
+        return summary
+
+    for key in logs[0].keys():
+        summary[key] = np.mean([d[key] for d in logs])
+
+    return summary
 
 
 class ImageAugmentor:

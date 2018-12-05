@@ -12,7 +12,7 @@ class AsyncDataGeneratorWrapper(DataGeneratorBase):
         self.data_generator = data_generator
         self.max_q_size = max_q_size
         self.data_queue = mp.Queue(maxsize=max_q_size)
-        self.process = mp.Process(target=self._put_data_into_queue)
+        self.process = mp.Process(target=self._put_data_into_queue, daemon=True)
         self.process.start()
 
     def __len__(self):
@@ -34,6 +34,7 @@ class AsyncDataGeneratorWrapper(DataGeneratorBase):
                 data[key] for data in data_list
             ], axis=0)
             batch_data[key] = batch_value
+
         return batch_data
 
     def _put_data_into_queue(self):

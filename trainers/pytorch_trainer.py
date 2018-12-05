@@ -21,8 +21,10 @@ class PytorchTrainer(TrainerBase, ABC):
     ):
         self.comet_experiment = comet_experiment
         self.model = model
+        if torch.cuda.is_available():
+            self.model.cuda()
+
         self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
-        # TODO
         self.i_epoch = 0
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
@@ -58,7 +60,9 @@ class PytorchTrainer(TrainerBase, ABC):
         verbose_epoch_num = kwargs['verbose_epoch_num']
 
         for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
-            log_dict = self.model.fit_generator(training_data_generator, batch_size)
+            log_dict = self.model.fit_generator(
+                training_data_generator, self.opt, batch_size=batch_size
+            )
 
             if self.i_epoch % verbose_epoch_num == 0:
                 print(f'epoch: {self.i_epoch}', log_dict)

@@ -24,14 +24,13 @@ COMET_ML_KEY = os.environ.get('COMET_ML_KEY')
 if not os.path.exists(RESULT_DIR):
     os.mkdir(RESULT_DIR)
 
-if args.do_comet:
-    experiment = Experiment(
-        api_key=COMET_ML_KEY,
-        log_code=False,
-        project_name=args.comet_project,
-        workspace=args.comet_workspace,
-        parse_args=False,
-    )
+experiment = Experiment(
+    api_key=COMET_ML_KEY,
+    log_code=False,
+    project_name=args.comet_project,
+    workspace=args.comet_workspace,
+    parse_args=False,
+) if args.do_comet else None
 
 
 def flow(
