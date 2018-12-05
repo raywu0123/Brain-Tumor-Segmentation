@@ -6,6 +6,7 @@ np.random.seed = 0
 
 from .base import DataGeneratorFactoryBase, DataGeneratorBase
 from .utils import to_one_hot_label
+from .wrappers import AsyncDataGeneratorWrapper
 from utils import BRATSMetricClass
 
 modal_bases = ['Flair.']
@@ -35,11 +36,16 @@ class Brats2015DataGeneratorFactory(DataGeneratorFactoryBase):
             all_ids.extend(folder_dirs)
         return all_ids
 
+    def _get_data_generator(self, data_ids, **kwargs):
+        data_generator = Brats2015DataGenerator(data_ids, self.data_format, **kwargs)
+        AsyncDataGeneratorWrapper(data_generator)
+        return data_generator
+
     def get_testing_data_generator(self, **kwargs):
-        return Brats2015DataGenerator(self.test_ids, self.data_format, **kwargs)
+        return self._get_data_generator(self.test_ids, **kwargs)
 
     def get_training_data_generator(self, **kwargs):
-        return Brats2015DataGenerator(self.train_ids, self.data_format, **kwargs)
+        return self._get_data_generator(self.train_ids, **kwargs)
 
     @property
     def data_format(self):
@@ -108,6 +114,6 @@ class Brats2015DataGenerator(DataGeneratorBase):
             self.data_format['width'],
         ))
 
-        for idx, data_id in data_ids:
+        for idx, data_id in enumerate(data_ids):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
         return {'volume': batch_volume, 'label': batch_label}

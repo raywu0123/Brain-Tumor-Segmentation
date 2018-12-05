@@ -14,7 +14,7 @@ np.random.seed(args.global_random_seed)
 from dotenv import load_dotenv
 
 from models import MODELS
-from data import DataProviders
+from data.data_generator_factories import DataProviders
 from utils import parse_exp_id
 
 load_dotenv('./.env')
@@ -70,7 +70,7 @@ def main():
     get_model, fit_hyper_parameters = MODELS[args.model_id]
 
     model = get_model(
-        **data_provider.data_format,
+        data_provider.data_format,
     )
 
     if args.checkpoint_dir is not None:

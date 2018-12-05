@@ -1,11 +1,11 @@
 import os
 
 import nibabel as nib
-from tqdm import tqdm
 import numpy as np
 np.random.seed = 0
 
 from .base import DataGeneratorFactoryBase, DataGeneratorBase
+from .wrappers import AsyncDataGeneratorWrapper
 from .utils import to_one_hot_label
 
 
@@ -19,11 +19,16 @@ class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
+    def _get_data_generator(self, data_ids, **kwargs):
+        data_generator = NtuDataGenerator(self.data_dir, data_ids, self.data_format, **kwargs)
+        AsyncDataGeneratorWrapper(data_generator)
+        return data_generator
+
     def get_testing_data_generator(self, **kwargs):
-        return NtuDataGenerator(self.data_dir, self.test_ids, self.data_format, **kwargs)
+        return self._get_data_generator(self.test_ids, **kwargs)
 
     def get_training_data_generator(self, **kwargs):
-        return NtuDataGenerator(self.data_dir, self.train_ids, self.data_format, **kwargs)
+        return self._get_data_generator(self.train_ids, **kwargs)
 
     @property
     def data_format(self):
@@ -60,7 +65,7 @@ class NtuDataGenerator(DataGeneratorBase):
             self.current_index += batch_size
         return self._get_data(selected_data_ids)
 
-    def _get_data(self, data_ids, verbose=False):
+    def _get_data(self, data_ids):
         batch_volume = np.empty((
             len(data_ids),
             self.data_format['channels'],
@@ -76,12 +81,7 @@ class NtuDataGenerator(DataGeneratorBase):
             self.data_format['width'],
         ))
 
-        iterator = data_ids
-        if verbose:
-            print('Loading data...')
-            iterator = tqdm(data_ids)
-
-        for idx, data_id in enumerate(iterator):
+        for idx, data_id in enumerate(data_ids):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
         return {'volume': batch_volume, 'label': batch_label}
 

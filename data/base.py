@@ -21,16 +21,16 @@ class DataGeneratorFactoryBase(ABC):
 
     @property
     @abstractmethod
-    def data_format(self):
+    def data_format(self) -> dict:
         pass
 
 
 class DataGeneratorBase(ABC):
 
     @abstractmethod
-    def __call__(self, batch_size):
+    def __call__(self, batch_size: int) -> dict:
         pass
 
     @abstractmethod
-    def __len__(self):
+    def __len__(self) -> int:
         pass

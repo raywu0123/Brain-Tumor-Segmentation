@@ -1,7 +1,6 @@
 import os
 import math
-import multiprocessing as mp
-import time
+from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
@@ -12,52 +11,45 @@ from .utils import (
     weighted_cross_entropy,
     soft_dice_score,
     normalize_image,
-    ImageAugmentor,
     get_2d_from_3d,
     get_3d_from_2d,
     co_shuffle,
     get_tensor_from_array,
 )
 
-
 load_dotenv('./.env')
 RESULT_DIR_BASE = os.environ.get('RESULT_DIR')
 
 
-class ModelBase:
-    def __init__(
-            self,
-            channels: int = 1,
-            depth: int = 200,
-            height: int = 200,
-            width: int = 200,
-            metadata_dim: int = 0,
-            class_num: int = 2,
-        ):
-        self.data_channels = channels
-        self.data_depth = depth
-        self.data_height = height
-        self.data_width = width
-        self.metadata_dim = metadata_dim
-        self.class_num = class_num
+class ModelBase(ABC):
+
+    @abstractmethod
+    def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
+        pass
+
+    @abstractmethod
+    def predict(self, test_data, **kwargs):
+        pass
+
+    @abstractmethod
+    def save(self):
+        pass
+
+    @abstractmethod
+    def load(self, checkpoint_path):
+        pass
+
+
+class PytorchModelBase(ModelBase, ABC):
+
+    def __init__(self, data_format):
+        self.data_format = data_format
         self.comet_experiment = None
         self.model = None
         self.opt = None
         self.i_epoch = 0
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
-
-    def fit(self, training_data, validation_data, **kwargs):
-        raise NotImplementedError('fit not implemented')
-
-    def fit_dataloader(self, get_training_dataloader, get_validation_dataloader, **kwargs):
-        raise NotImplementedError('fit_dataloader not implemented')
-
-    def train_on_batch(self, training_data_generator, batch_size):
-        raise NotImplementedError('fit_dataloader not implemented')
-
-    def predict(self, test_data, batch_size, **kwargs):
-        raise NotImplementedError('predict not implemented')
 
     def save(self):
         torch.save(
@@ -77,10 +69,10 @@ class ModelBase:
         self.i_epoch = checkpoint['epoch'] + 1
         print(f'model loaded from {file_path}')
 
-    def _validate(self, validation_data_generator, batch_size, metric):
+    def _validate(self, validation_data_generator, metric, **kwargs):
         batch_data = validation_data_generator(batch_size=1)
         label = batch_data['label']
-        pred = self.predict(batch_data, batch_size)
+        pred = self.predict(batch_data, **kwargs)
         return metric(pred, label).all_metrics()
 
     def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
@@ -92,60 +84,38 @@ class ModelBase:
             self.comet_experiment = kwargs['experiment']
 
         for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
-            loss, dice_score = self.train_on_batch(training_data_generator, batch_size)
+            log_dict = self.train_on_batch(training_data_generator, batch_size)
+
             if self.i_epoch % verbose_epoch_num == 0:
-                print(
-                    f'epoch: {self.i_epoch}',
-                    f', crossentropy_loss: {loss}',
-                    f', dice_score: {dice_score}',
-                )
+                print(f'epoch: {self.i_epoch}', log_dict)
                 self.save()
                 metrics = self._validate(
-                    validation_data_generator, batch_size, metric,
+                    validation_data_generator, metric, batch_size=batch_size
                 )
                 if self.comet_experiment is not None:
-                    self.comet_experiment.log_multiple_metrics({
-                        'crossentropy_loss': loss,
-                        'dice_score': dice_score,
-                    }, prefix='training', step=self.i_epoch
+                    self.comet_experiment.log_multiple_metrics(
+                        log_dict, prefix='training', step=self.i_epoch
                     )
                     self.comet_experiment.log_multiple_metrics(
                         metrics, prefix='validation', step=self.i_epoch
                     )
 
+    @abstractmethod
+    def train_on_batch(self, training_data_generator, batch_size):
+        pass
 
-class Model2DBase(ModelBase):
-    def __init__(
-            self,
-            channels: int = 1,
-            depth: int = 200,
-            height: int = 200,
-            width: int = 200,
-            metadata_dim: int = 0,
-            class_num: int = 2,
-        ):
-        super(Model2DBase, self).__init__(
-            channels=channels,
-            depth=depth,
-            height=height,
-            width=width,
-            metadata_dim=metadata_dim,
-            class_num=class_num,
-        )
 
-        self.image_augmentor = ImageAugmentor(
-            channels,
-            height,
-            width,
-            mode='albumentations',
-        )
+class Model2DBase(PytorchModelBase):
+
+    def __init__(self, data_format):
+        super(Model2DBase, self).__init__(data_format)
 
     def train_on_batch(self, training_data_generator, batch_size):
-        image, label = self._get_augmented_image_and_label(data_generator=training_data_generator)
-        losses = []
+        image, label = self._get_data_with_generator(training_data_generator)
+        crossentropy_losses = []
         dice_scores = []
 
-        for batch_idx in range(self.data_depth // batch_size):
+        for batch_idx in range(self.data_format['depth'] // batch_size):
             self.model.zero_grad()
             batch_image = image[batch_idx * batch_size: (batch_idx + 1) * batch_size]
             batch_label = label[batch_idx * batch_size: (batch_idx + 1) * batch_size]
@@ -166,37 +136,25 @@ class Model2DBase(ModelBase):
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             self.opt.step()
 
-            losses.append(crossentropy_loss.item())
+            crossentropy_losses.append(crossentropy_loss.item())
             dice_scores.append(dice_score.item())
 
-        losses = np.mean(losses)
+        crossentropy_losses = np.mean(crossentropy_losses)
         dice_scores = np.mean(dice_scores)
-
-        return losses, dice_scores
-
-    def _get_augmented_image_and_label(self, **kwargs):
-        data_generator = kwargs['data_generator']
-        image, label = self._get_data_with_generator(
-            data_generator,
-            1,
-        )
-        image, label = self.image_augmentor.co_transform(image, label)
-        return image, label
+        return {'crossentropy_loss': crossentropy_losses, 'soft_dice': dice_scores}
 
     @staticmethod
-    def _get_data_with_generator(generator, batch_size):
-        batch_data = generator(batch_size=batch_size)
+    def _get_data_with_generator(generator):
+        batch_data = generator(batch_size=1)
         batch_volume, batch_label = batch_data['volume'], batch_data['label']
 
         batch_image = get_2d_from_3d(batch_volume)
         batch_label = get_2d_from_3d(batch_label)
 
-        batch_image = normalize_image(batch_image)
-
         batch_image, batch_label = co_shuffle(batch_image, batch_label)
         return batch_image, batch_label
 
-    def _predict_on_2d_images(self, image, batch_size, verbose=False, **kwargs):
+    def _predict_on_2d_images(self, image, batch_size, verbose=False):
         pred_buff = []
         self.model.eval()
         batch_num = math.ceil(image.shape[0] / batch_size)
@@ -217,93 +175,11 @@ class Model2DBase(ModelBase):
         pred_buff = np.asarray(pred_buff)
         return pred_buff
 
-    def predict(self, test_data, batch_size, **kwargs):
+    def predict(self, test_data, **kwargs):
         print(kwargs)
         test_volumes = test_data['volume']
         test_images = get_2d_from_3d(test_volumes)
         test_images = normalize_image(test_images)
-        pred_images = self._predict_on_2d_images(test_images, batch_size, **kwargs)
-        pred_volumes = get_3d_from_2d(pred_images, self.data_depth)
+        pred_images = self._predict_on_2d_images(test_images, **kwargs)
+        pred_volumes = get_3d_from_2d(pred_images, self.data_format['depth'])
         return pred_volumes
-
-    def fit_dataloader(self, get_training_dataloader, get_validation_dataloader, **kwargs):
-        batch_size = kwargs['batch_size']
-        validation_dataloader = get_validation_dataloader(batch_size, shuffle=True, num_workers=4)
-        for i_batch, sampled_batch in enumerate(validation_dataloader):
-            print(i_batch, type(sampled_batch['volume']))
-            print(sampled_batch['volume'].shape, sampled_batch['label'].shape)
-            input()
-
-
-class AsyncModel2DBase(Model2DBase):
-    def __init__(
-        self,
-        channels: int = 1,
-        depth: int = 200,
-        height: int = 200,
-        width: int = 200,
-        metadata_dim: int = 0,
-        class_num: int = 2,
-    ):
-        super().__init__(
-            channels,
-            depth,
-            height,
-            width,
-            metadata_dim,
-            class_num,
-        )
-        self.data_queue = mp.Queue()
-        self.data_generator = None
-
-    def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
-        print(kwargs)
-        batch_size = kwargs['batch_size']
-        epoch_num = kwargs['epoch_num']
-
-        verbose_epoch_num = kwargs['verbose_epoch_num']
-        if 'experiment' in kwargs:
-            self.comet_experiment = kwargs['experiment']
-
-        self.data_generator = training_data_generator
-        process = mp.Process(target=self._put_data_into_queue)
-        process.start()
-
-        for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
-            losses, dice_scores = self.train_on_batch(training_data_generator, batch_size)
-            if self.i_epoch % verbose_epoch_num == 0:
-                print(
-                    f'epoch: {self.i_epoch}',
-                    f', bce_loss: {np.mean(losses)}',
-                    f', dice_score: {np.mean(dice_scores)}',
-                )
-
-                self.save()
-                metrics = self._validate(
-                    validation_data_generator, batch_size, metric,
-                )
-                if self.comet_experiment is not None:
-                    self.comet_experiment.log_multiple_metrics({
-                        'bce_loss': np.mean(losses),
-                        'dice_score': np.mean(dice_scores),
-                    }, prefix='training', step=self.i_epoch
-                    )
-                    self.comet_experiment.log_multiple_metrics(
-                        metrics, prefix='validation', step=self.i_epoch
-                    )
-
-    def _get_augmented_image_and_label(self, **kwargs):
-        while self.data_queue.empty():
-            time.sleep(0.1)
-        image, label = self.data_queue.get()
-        return image, label
-
-    def _put_data_into_queue(self):
-        while True:
-            if self.data_queue.qsize() < 10:
-                image, label = self._get_data_with_generator(
-                    self.data_generator,
-                    1,
-                )
-                image, label = self.image_augmentor.co_transform(image, label)
-                self.data_queue.put((image, label))

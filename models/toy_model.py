@@ -6,39 +6,25 @@ import torch.nn.functional as F
 import torch.optim as optim
 from dotenv import load_dotenv
 
-from .base import AsyncModel2DBase
+from .base import Model2DBase
 
 load_dotenv('./.env')
 RESULT_DIR_BASE = os.environ.get('RESULT_DIR')
 
 
-class ToyModel(AsyncModel2DBase):
+class ToyModel(Model2DBase):
+
     def __init__(
             self,
-            channels: int = 1,
-            depth: int = 200,
-            height: int = 200,
-            width: int = 200,
-            metadata_dim: int = 0,
-            class_num: int = 2,
+            data_format: dict,
             num_units: [int] = (32, 32, 64, 64, 128),
             pooling_layer_num: [int] = (1, 3),
             kernel_size: int = 3,
             lr: float = 1e-4,
         ):
-        super(ToyModel, self).__init__(
-            channels=channels,
-            depth=depth,
-            height=height,
-            width=width,
-            metadata_dim=metadata_dim,
-            class_num=class_num,
-        )
+        super(ToyModel, self).__init__(data_format)
         self.model = ToyModelNet(
-            image_chns=self.data_channels,
-            image_height=self.data_height,
-            image_width=self.data_width,
-            class_num=self.class_num,
+            data_format=data_format,
             num_units=num_units,
             pooling_layer_num=pooling_layer_num,
             kernel_size=kernel_size,
@@ -49,22 +35,21 @@ class ToyModel(AsyncModel2DBase):
 
 
 class ToyModelNet(nn.Module):
+
     def __init__(
         self,
-        image_chns,
-        image_height,
-        image_width,
-        class_num,
+        data_format,
         num_units,
         kernel_size,
         pooling_layer_num
     ):
         super(ToyModelNet, self).__init__()
-        self.image_chns = image_chns
-        self.image_height = image_height
-        self.image_width = image_width
+        self.image_chns = data_format['channels']
+        self.image_height = data_format['height']
+        self.image_width = data_format['width']
+        self.class_num = data_format['class_num']
 
-        encoder_num_units = (image_chns,) + num_units
+        encoder_num_units = (self.image_chns,) + num_units
         self.encoder_convs = nn.ModuleList()
         self.encoder_batchnorms = nn.ModuleList()
         for idx in range(len(encoder_num_units) - 1):
@@ -85,10 +70,10 @@ class ToyModelNet(nn.Module):
             self.encoder_convs.append(conv)
             self.encoder_batchnorms.append(batchnorm)
 
-        decoder_num_units = num_units[::-1] + (class_num,)
+        decoder_num_units = num_units[::-1] + (self.class_num,)
         self.decoder_deconvs = nn.ModuleList()
         self.decoder_batchnorms = nn.ModuleList()
-        img_size = image_height // (2 ** len(pooling_layer_num))
+        img_size = self.image_height // (2 ** len(pooling_layer_num))
         for idx in range((len(decoder_num_units)) - 1):
             if idx in pooling_layer_num:
                 stride = 2

@@ -5,39 +5,28 @@ from dotenv import load_dotenv
 load_dotenv('./.env')
 import torch.optim as optim
 
-from .base import AsyncModel2DBase
+from .base import Model2DBase
 
 
-class UNet(AsyncModel2DBase):
+class UNet(Model2DBase):
+
     def __init__(
             self,
-            channels: int = 1,
-            depth: int = 200,
-            height: int = 200,
-            width: int = 200,
-            metadata_dim: int = 0,
-            class_num: int = 2,
+            data_format: dict,
             lr: float = 1e-4,
             kernel_size: int = 3,
             floor_num: int = 4,
             channel_num: int = 64,
             conv_times: int = 2,
         ):
-        super(UNet, self).__init__(
-            channels=channels,
-            depth=depth,
-            height=height,
-            width=width,
-            metadata_dim=metadata_dim,
-            class_num=class_num,
-        )
+        super(UNet, self).__init__(data_format)
         self.model = UNet_Net(
-            image_chns=self.data_channels,
+            image_chns=self.data_format['channels'],
             kernel_size=kernel_size,
             floor_num=floor_num,
             channel_num=channel_num,
             conv_times=conv_times,
-            class_num=class_num,
+            class_num=data_format['class_num'],
         )
         self.opt = optim.Adam(params=self.model.parameters(), lr=lr)
         if torch.cuda.is_available():
@@ -45,6 +34,7 @@ class UNet(AsyncModel2DBase):
 
 
 class UNet_Net(nn.Module):
+
     def __init__(
         self,
         image_chns,
@@ -87,6 +77,7 @@ class UNet_Net(nn.Module):
 
 
 class Conv_N_Times(nn.Module):
+
     def __init__(self, in_ch, out_ch, kernel_size, conv_times):
         super(Conv_N_Times, self).__init__()
         assert(conv_times > 0)
@@ -113,6 +104,7 @@ class Conv_N_Times(nn.Module):
 
 
 class DnConv(nn.Module):
+
     def __init__(self, in_ch, kernel_size, conv_times):
         out_ch = in_ch * 2
         super(DnConv, self).__init__()
@@ -127,6 +119,7 @@ class DnConv(nn.Module):
 
 
 class UpConv(nn.Module):
+
     def __init__(self, in_ch, kernel_size, conv_times, bilinear=True):
         super(UpConv, self).__init__()
         out_ch = in_ch // 2
