@@ -1,50 +1,79 @@
 import os
-from functools import partial
 
 import nibabel as nib
 from tqdm import tqdm
 import numpy as np
 np.random.seed = 0
 
-from .base import DataGeneratorFactoryBase
+from .base import DataGeneratorFactoryBase, DataGeneratorBase
 from .utils import to_one_hot_label
 
 
-img_channels = 1
-img_depth = 200
-img_height = img_width = 200
-metadata_dim = 0
-class_num = 2
-
-
 class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
+
     def __init__(self, data_dir):
-        self.DATA_DIR = data_dir
+        self.data_dir = data_dir
         self.image_path = os.path.join(data_dir, 'image')
         self.label_path = os.path.join(data_dir, 'label')
-        self.description = 'NTU_MRI'
         self.all_ids = os.listdir(self.image_path)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
-    def _data_generator(self, data_ids, batch_size):
-        selected_ids = np.random.choice(data_ids, batch_size)
-        return self._get_data(selected_ids)
+    def get_testing_data_generator(self, **kwargs):
+        return NtuDataGenerator(self.data_dir, self.test_ids, self.data_format, **kwargs)
+
+    def get_training_data_generator(self, **kwargs):
+        return NtuDataGenerator(self.data_dir, self.train_ids, self.data_format, **kwargs)
+
+    @property
+    def data_format(self):
+        return {
+            "channels": 1,
+            "depth": 200,
+            "height": 200,
+            "width": 200,
+            "class_num": 2,
+        }
+
+
+class NtuDataGenerator(DataGeneratorBase):
+
+    def __init__(self, data_dir, data_ids, data_format, random=True):
+        self.data_dir = data_dir
+        self.data_ids = data_ids
+
+        self.data_format = data_format
+        self.random = random
+        self.current_index = 0
+
+        self.image_path = os.path.join(data_dir, 'image')
+        self.label_path = os.path.join(data_dir, 'label')
+
+    def __len__(self):
+        return len(self.data_ids)
+
+    def __call__(self, batch_size):
+        if self.random:
+            selected_data_ids = np.random.choice(self.data_ids, batch_size)
+        else:
+            selected_data_ids = self.data_ids[self.current_index: self.current_index + batch_size]
+            self.current_index += batch_size
+        return self._get_data(selected_data_ids)
 
     def _get_data(self, data_ids, verbose=False):
         batch_volume = np.empty((
             len(data_ids),
-            img_channels,
-            img_depth,
-            img_height,
-            img_width,
+            self.data_format['channels'],
+            self.data_format['depth'],
+            self.data_format['height'],
+            self.data_format['width'],
         ))
         batch_label = np.empty((
             len(data_ids),
-            class_num,
-            img_depth,
-            img_height,
-            img_width,
+            self.data_format['class_num'],
+            self.data_format['depth'],
+            self.data_format['height'],
+            self.data_format['width'],
         ))
 
         iterator = data_ids
@@ -54,7 +83,7 @@ class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
 
         for idx, data_id in enumerate(iterator):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
-        return {'volume': batch_volume, 'metadata': None, 'label': batch_label}
+        return {'volume': batch_volume, 'label': batch_label}
 
     def _get_image_and_label(self, data_id):
         # Dims: (N, C, D, H, W)
@@ -67,26 +96,8 @@ class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
             label = np.transpose(label, (2, 0, 1))
-            label = to_one_hot_label(label, class_num)
+            label = to_one_hot_label(label, self.data_format['class_num'])
         else:
             label = None
 
         return image, label
-
-    def get_testing_data_generator(self, **kwargs):
-        return partial(self._data_generator, self.test_ids)
-
-    def get_training_data_generator(self, **kwargs):
-        return partial(self._data_generator, self.train_ids)
-
-    @property
-    def data_format(self):
-        data_format = {
-            "channels": img_channels,
-            "depth": img_depth,
-            "height": img_height,
-            "width": img_width,
-            "metadata_dim": metadata_dim,
-            "class_num": class_num,
-        }
-        return data_format

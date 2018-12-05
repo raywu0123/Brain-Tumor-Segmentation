@@ -23,3 +23,14 @@ class DataGeneratorFactoryBase(ABC):
     @abstractmethod
     def data_format(self):
         pass
+
+
+class DataGeneratorBase(ABC):
+
+    @abstractmethod
+    def __call__(self, batch_size):
+        pass
+
+    @abstractmethod
+    def __len__(self):
+        pass
