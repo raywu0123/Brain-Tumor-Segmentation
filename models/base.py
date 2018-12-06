@@ -31,7 +31,9 @@ class PytorchModelBase(ModelBase, nn.Module):
     def fit_generator(self, training_data_generator, optimizer, **kwargs):
         self.train()
         data = training_data_generator(batch_size=1)
-        batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(data, **kwargs)
+        batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(
+            data, training=True, **kwargs
+        )
         logs = []
         for batch_data, batch_label in zip(batch_data_list, batch_label_list):
             self.zero_grad()
@@ -48,6 +50,8 @@ class PytorchModelBase(ModelBase, nn.Module):
 
     def predict(self, test_data, **kwargs):
         self.eval()
-        batch_data_list, _ = self.batch_sampler.convert_to_feedable(test_data, **kwargs)
+        batch_data_list, _ = self.batch_sampler.convert_to_feedable(
+            test_data, training=False, **kwargs
+        )
         preds = [self.forward(batch_data).cpu().data.numpy() for batch_data in batch_data_list]
         return self.batch_sampler.reassemble(preds, test_data)

@@ -4,9 +4,9 @@ import SimpleITK as sitk
 import numpy as np
 np.random.seed = 0
 
-from .base import DataGeneratorFactoryBase, DataGeneratorBase
+from .data_provider_base import DataProviderBase
+from .base import DataGeneratorBase
 from .utils import to_one_hot_label
-from .wrappers import AsyncDataGeneratorWrapper
 from utils import BRATSMetricClass
 
 modal_bases = ['Flair.']
@@ -14,7 +14,7 @@ label_base = 'OT.'
 data_extension = '.mha'
 
 
-class Brats2015DataGeneratorFactory(DataGeneratorFactoryBase):
+class Brats2015DataProvider(DataProviderBase):
 
     def __init__(self, data_dirs):
         self._metric = BRATSMetricClass
@@ -36,16 +36,8 @@ class Brats2015DataGeneratorFactory(DataGeneratorFactoryBase):
             all_ids.extend(folder_dirs)
         return all_ids
 
-    def _get_data_generator(self, data_ids, **kwargs):
-        data_generator = Brats2015DataGenerator(data_ids, self.data_format, **kwargs)
-        AsyncDataGeneratorWrapper(data_generator)
-        return data_generator
-
-    def get_testing_data_generator(self, **kwargs):
-        return self._get_data_generator(self.test_ids, **kwargs)
-
-    def get_training_data_generator(self, **kwargs):
-        return self._get_data_generator(self.train_ids, **kwargs)
+    def _get_raw_data_generator(self, data_ids, **kwargs):
+        return Brats2015DataGenerator(data_ids, self.data_format, **kwargs)
 
     @property
     def data_format(self):
@@ -62,7 +54,7 @@ class Brats2015DataGenerator(DataGeneratorBase):
 
     def __init__(self, data_ids, data_format, random=True):
         self.data_ids = data_ids
-        self.data_format = data_format
+        self._data_format = data_format
         self.random = random
         self.current_index = 0
 

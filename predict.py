@@ -9,7 +9,7 @@ parser = brain_tumor_argparse()
 args = parser.parse_args()
 
 from models import ModelHub
-from data.data_generator_factories import DataProviderHub
+from data.data_providers import DataProviderHub
 from utils import parse_exp_id
 load_dotenv('./.env')
 

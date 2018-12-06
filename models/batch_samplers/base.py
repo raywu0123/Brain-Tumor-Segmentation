@@ -5,7 +5,7 @@ from typing import Tuple
 class BatchSamplerBase(ABC):
 
     @abstractmethod
-    def convert_to_feedable(self, batch_data, batch_size) -> Tuple[list, list]:
+    def convert_to_feedable(self, batch_data, batch_size, training, **kwargs) -> Tuple[list, list]:
         pass
 
     @abstractmethod

@@ -4,12 +4,12 @@ import nibabel as nib
 import numpy as np
 np.random.seed = 0
 
-from .base import DataGeneratorFactoryBase, DataGeneratorBase
-from .wrappers import AsyncDataGeneratorWrapper
+from .base import DataGeneratorBase
+from .data_provider_base import DataProviderBase
 from .utils import to_one_hot_label
 
 
-class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
+class NtuMriDataProvider(DataProviderBase):
 
     def __init__(self, data_dir):
         self.data_dir = data_dir
@@ -19,16 +19,8 @@ class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
-    def _get_data_generator(self, data_ids, **kwargs):
-        data_generator = NtuDataGenerator(self.data_dir, data_ids, self.data_format, **kwargs)
-        AsyncDataGeneratorWrapper(data_generator)
-        return data_generator
-
-    def get_testing_data_generator(self, **kwargs):
-        return self._get_data_generator(self.test_ids, **kwargs)
-
-    def get_training_data_generator(self, **kwargs):
-        return self._get_data_generator(self.train_ids, **kwargs)
+    def _get_raw_data_generator(self, data_ids, **kwargs):
+        return NtuDataGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
 
     @property
     def data_format(self):
@@ -43,11 +35,11 @@ class NtuMriDataGeneratorFactory(DataGeneratorFactoryBase):
 
 class NtuDataGenerator(DataGeneratorBase):
 
-    def __init__(self, data_dir, data_ids, data_format, random=True):
+    def __init__(self, data_ids, data_format, data_dir, random=True):
         self.data_dir = data_dir
         self.data_ids = data_ids
 
-        self.data_format = data_format
+        self._data_format = data_format
         self.random = random
         self.current_index = 0
 

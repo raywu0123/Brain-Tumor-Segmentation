@@ -14,7 +14,7 @@ np.random.seed(args.global_random_seed)
 from dotenv import load_dotenv
 
 from models import ModelHub
-from data.data_generator_factories import DataProviderHub
+from data.data_providers import DataProviderHub
 from utils import parse_exp_id
 from trainers.pytorch_trainer import PytorchTrainer
 
