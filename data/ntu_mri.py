@@ -8,19 +8,35 @@ from .base import DataGeneratorBase
 from .data_provider_base import DataProviderBase
 from .utils import to_one_hot_label
 
+from dotenv import load_dotenv
+
+load_dotenv('./.env')
+
+NTU_MRI_DIR = os.environ.get('NTU_MRI_DIR')
+NTU_MOCK_TEST_DIR = os.environ.get('NTU_MOCK_TEST_DIR')
+NTU_TEST_DIR = os.environ.get('NTU_TEST_DIR')
+
 
 class NtuMriDataProvider(DataProviderBase):
 
-    def __init__(self, data_dir):
-        self.data_dir = data_dir
-        self.image_path = os.path.join(data_dir, 'image')
-        self.label_path = os.path.join(data_dir, 'label')
+    def __init__(self, args):
+        self.data_dir = self._parse_args_to_dirs(args)
+        self.image_path = os.path.join(self.data_dir, 'image')
+        self.label_path = os.path.join(self.data_dir, 'label')
         self.all_ids = os.listdir(self.image_path)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
         return NtuDataGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
+
+    def _parse_args_to_dirs(self, args):
+        if 'mri' in args:
+            return NTU_MRI_DIR
+        if 'mocktest' in args:
+            return NTU_MOCK_TEST_DIR
+        if 'test' in args:
+            return NTU_TEST_DIR
 
     @property
     def data_format(self):

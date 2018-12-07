@@ -65,7 +65,8 @@ def main():
     args.exp_id = os.environ.get('EXP_ID')
     print('EXP_ID:', os.environ.get('EXP_ID'))
 
-    get_data_provider, data_provider_parameters = DataProviderHub[args.data_provider_id]
+    DataProviderHubClass = DataProviderHub()
+    get_data_provider, data_provider_parameters = DataProviderHubClass[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
 
     get_model, fit_hyper_parameters = ModelHub[args.model_id]

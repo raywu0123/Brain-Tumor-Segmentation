@@ -9,17 +9,26 @@ from .base import DataGeneratorBase
 from .utils import to_one_hot_label
 from utils import BRATSMetricClass
 
-modal_bases = ['Flair.']
+from dotenv import load_dotenv
+
 label_base = 'OT.'
 data_extension = '.mha'
+
+load_dotenv('./.env')
+
+BRATS2015_DIR = os.environ.get('BRATS2015_DIR')
+BRATS2015_HGG_DIR = os.path.join(BRATS2015_DIR, './HGG')
+BRATS2015_LGG_DIR = os.path.join(BRATS2015_DIR, './LGG')
 
 
 class Brats2015DataProvider(DataProviderBase):
 
-    def __init__(self, data_dirs):
+    def __init__(self, args):
         self._metric = BRATSMetricClass
 
-        self.data_dirs = data_dirs
+        self.data_dirs = self._parse_args_to_dirs(args)
+
+        self.modal_bases = self._parse_args_to_modal_bases(args)
 
         self.all_ids = self._get_all_ids()
 
@@ -37,12 +46,38 @@ class Brats2015DataProvider(DataProviderBase):
         return all_ids
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
-        return Brats2015DataGenerator(data_ids, self.data_format, **kwargs)
+        return Brats2015DataGenerator(data_ids, self.data_format, self.modal_bases, **kwargs)
+
+    def _parse_args_to_dirs(self, args):
+        data_dirs = []
+        if 'hgg' in args:
+            data_dirs.append(BRATS2015_HGG_DIR)
+        if 'lgg' in args:
+            data_dirs.append(BRATS2015_LGG_DIR)
+        #   default
+        if not data_dirs:
+            data_dirs = [BRATS2015_HGG_DIR, BRATS2015_LGG_DIR]
+        return data_dirs
+
+    def _parse_args_to_modal_bases(self, args):
+        modal_bases = []
+        if 'Flair' in args:
+            modal_bases.append('Flair.')
+        if 'T1' in args:
+            modal_bases.append('T1.')
+        if 'T1c' in args:
+            modal_bases.append('T1c.')
+        if 'T2c' in args:
+            modal_bases.append('T2.')
+        #   default
+        if not modal_bases:
+            modal_bases = ['Flair.', 'T1.', 'T1c.', 'T2.']
+        return modal_bases
 
     @property
     def data_format(self):
         return {
-            "channels": len(modal_bases),
+            "channels": len(self.modal_bases),
             "depth": 155,
             "height": 240,
             "width": 240,
@@ -52,9 +87,10 @@ class Brats2015DataProvider(DataProviderBase):
 
 class Brats2015DataGenerator(DataGeneratorBase):
 
-    def __init__(self, data_ids, data_format, random=True):
+    def __init__(self, data_ids, data_format, modal_bases, random=True):
         self.data_ids = data_ids
         self._data_format = data_format
+        self.modal_bases = modal_bases
         self.random = random
         self.current_index = 0
 
@@ -70,7 +106,7 @@ class Brats2015DataGenerator(DataGeneratorBase):
         return self._get_data(selected_data_ids)
 
     def _get_image_and_label(self, data_id):
-        image = [self._get_image_from_folder(data_id, base) for base in modal_bases]
+        image = [self._get_image_from_folder(data_id, base) for base in self.modal_bases]
         image = np.asarray(image)
         label = self._get_image_from_folder(data_id, label_base)
         label = to_one_hot_label(label, self.data_format['class_num'])
