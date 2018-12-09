@@ -116,7 +116,6 @@ class UpConv(nn.Module):
         self.activation = activation_fn()
         self.batch_norm = nn.BatchNorm3d(x2_channel)
         self.conv_N_time = ConvNTimes(x2_channel * 2, kernel_size, conv_time)
-        self.padding = nn.ConstantPad3d((0, 1, 0, 1, 0, 1), 0)
 
     def forward(self, x1, x2):
         x1 = self.up_conv(x1)
@@ -126,7 +125,12 @@ class UpConv(nn.Module):
             # this case will only happend for
             # x1 [N, C, D-1, H-1, W-1]
             # x2 [N, C, D,   H,   W  ]
-            x1 = self.padding(x1)
+            p_d = x2.shape[2] - x1.shape[2]
+            p_h = x2.shape[3] - x1.shape[3]
+            p_w = x2.shape[4] - x1.shape[4]
+            pad = nn.ConstantPad3d((0, p_w, 0, p_h, 0, p_d), 0)
+            x1 = pad(x1)
+
         x = torch.cat((x1, x2), 1)
         x1 = self.conv_N_time(x)
         x = x1 + x
