@@ -7,11 +7,15 @@ epsilon = 1e-8
 
 
 def ce_minus_log_dice(pred: torch.Tensor, tar: np.array):
+
+    channel_num = tar.shape[1]
+    temp = np.swapaxes(tar, 0, 1).reshape(channel_num, -1)
     class_weights = np.divide(
-        1., np.mean(tar, axis=(0, 2, 3)),
+        1., np.mean(temp, axis=(1)),
         out=np.ones(tar.shape[1]),
-        where=np.mean(tar, axis=(0, 2, 3)) != 0,
+        where=np.mean(temp, axis=(1)) != 0,
     )
+
     tar = get_tensor_from_array(tar)
     crossentropy_loss, log_1 = weighted_cross_entropy(pred, tar, weights=class_weights)
     dice_score, log_2 = soft_dice_score(pred, tar)

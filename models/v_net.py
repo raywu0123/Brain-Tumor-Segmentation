@@ -5,48 +5,13 @@ import numpy as np
 
 # from .utils import weighted_cross_entropy, soft_dice_score, get_tensor_from_array
 from .base import PytorchModelBase
+from .batch_samplers.three_dim import ThreeDimBatchSampler
+from .loss_functions import ce_minus_log_dice
+from .utils import get_tensor_from_array
 
 
 def activation_fn():
     return nn.ReLU()
-
-
-# class Model3DBase(PytorchModelBase):
-#
-#     def __init__(self, data_format):
-#         super(Model3DBase, self).__init__()
-#
-#     def train_on_batch(self, training_data_generator, batch_size):
-#
-#         batch_data = training_data_generator(batch_size=batch_size)
-#         data, label = batch_data['volume'], batch_data['label']
-#         data = get_tensor_from_array(data)
-#         class_weight = np.divide(
-#             1., np.mean(label, axis=(0, 2, 3, 4)),
-#             out=np.ones(label.shape[1]),
-#             where=np.mean(label, axis=(0, 2, 3, 4)) != 0,
-#         )
-#         label = get_tensor_from_array(label)
-#
-#         self.model.train()
-#         pre = self.model(data)
-#         crossentropy_loss = weighted_cross_entropy(pre, label, class_weight)
-#         dice_score = soft_dice_score(pre, label)
-#         total_loss = crossentropy_loss - torch.log(dice_score)
-#
-#         self.opt.zero_grad()
-#         total_loss.backward()
-#         torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
-#         self.opt.step()
-#
-#         return crossentropy_loss.cpu().data.numpy(), dice_score.cpu().data.numpy()
-#
-#     def predict(self, test_data, **kwargs):
-#         self.model.eval()
-#         data = test_data['volume']
-#         data = get_tensor_from_array(data)
-#         pre = self.model(data)
-#         return pre.cpu().data.numpy()
 
 
 ###########################################################
@@ -63,7 +28,10 @@ class VNet(PytorchModelBase):
             conv_time: int = 2,
             n_layer: int = 4,
         ):
-        super(VNet, self).__init__()
+        super(VNet, self).__init__(
+            batch_sampler=ThreeDimBatchSampler(),
+            loss_fn=ce_minus_log_dice,
+        )
         # To work properly, kernel_size must be odd
         if kernel_size % 2 == 0:
             raise AssertionError('kernel_size({}) must be odd'.format(kernel_size))
@@ -88,14 +56,15 @@ class VNet(PytorchModelBase):
         self.up.append(up_conv)
         self.output_layer = OutLayer(duplication_num * 2, data_format['class_num'])
 
-    def forward(self, inp):
-        if inp.dim() != 5:
+    def forward(self, x):
+        x = get_tensor_from_array(x)
+        if x.dim() != 5:
             raise AssertionError('input must have shape (batch_size, channel, D, H, W),\
-                                 but get {}'.format(inp.shape))
+                                 but get {}'.format(x.shape))
 
         x_out = []
 
-        x = self.duplicate(inp)
+        x = self.duplicate(x)
         x_out.append(x)
 
         for down_layer in self.down:
@@ -109,14 +78,6 @@ class VNet(PytorchModelBase):
         x = self.output_layer(x)
         x = F.softmax(x, dim=1)
         return x
-
-    def fit_generator(self, training_data_generator, validation_data_generator, **kwargs):
-        # TODO
-        pass
-
-    def predict(self, test_data, **kwargs):
-        # TODO
-        pass
 
 
 ###########################################################
