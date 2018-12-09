@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
+from .batch_samplers.two_dim import TwoDimBatchSampler
+from .loss_functions import ce_minus_log_dice
+from .utils import get_tensor_from_array, normalize_batch_image
 
 
 class UNet(PytorchModelBase):
@@ -15,7 +18,10 @@ class UNet(PytorchModelBase):
         channel_num: int = 64,
         conv_times: int = 2,
     ):
-        super(UNet, self).__init__()
+        super(UNet, self).__init__(
+            batch_sampler=TwoDimBatchSampler(),
+            loss_fn=ce_minus_log_dice,
+        )
         self.floor_num = floor_num
         image_chns, class_num = data_format['channels'], data_format['class_num']
         self.down_layers = nn.ModuleList()
@@ -34,7 +40,10 @@ class UNet(PytorchModelBase):
             self.up_layers.append(u)
         self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, inp):
+        x = normalize_batch_image(inp)
+        x = get_tensor_from_array(x)
+
         x_out = []
         for down_layer in self.down_layers:
             x = down_layer(x)
@@ -45,14 +54,6 @@ class UNet(PytorchModelBase):
         x = self.out_conv(x)
         x = F.softmax(x, dim=1)
         return x
-
-    def fit_generator(self, training_data_generator, validation_data_generator, **kwargs):
-        # TODO
-        pass
-
-    def predict(self, test_data, **kwargs):
-        # TODO
-        pass
 
 
 class ConvNTimes(nn.Module):
