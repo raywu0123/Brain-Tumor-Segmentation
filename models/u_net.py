@@ -1,70 +1,37 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dotenv import load_dotenv
-load_dotenv('./.env')
-import torch.optim as optim
 
-from .base import AsyncModel2DBase
-
-
-class UNet(AsyncModel2DBase):
-    def __init__(
-            self,
-            channels: int = 1,
-            depth: int = 200,
-            height: int = 200,
-            width: int = 200,
-            metadata_dim: int = 0,
-            class_num: int = 2,
-            lr: float = 1e-4,
-            kernel_size: int = 3,
-            floor_num: int = 4,
-            channel_num: int = 64,
-            conv_times: int = 2,
-        ):
-        super(UNet, self).__init__(
-            channels=channels,
-            depth=depth,
-            height=height,
-            width=width,
-            metadata_dim=metadata_dim,
-            class_num=class_num,
-        )
-        self.model = UNet_Net(
-            image_chns=self.data_channels,
-            kernel_size=kernel_size,
-            floor_num=floor_num,
-            channel_num=channel_num,
-            conv_times=conv_times,
-            class_num=class_num,
-        )
-        self.opt = optim.Adam(params=self.model.parameters(), lr=lr)
-        if torch.cuda.is_available():
-            self.model.cuda()
+from .base import PytorchModelBase
+from .batch_samplers.two_dim import TwoDimBatchSampler
+from .loss_functions import ce_minus_log_dice
+from .utils import get_tensor_from_array, normalize_batch_image
 
 
-class UNet_Net(nn.Module):
+class UNet(PytorchModelBase):
+
     def __init__(
         self,
-        image_chns,
-        floor_num,
-        kernel_size,
-        channel_num,
-        conv_times,
-        class_num,
+        data_format: dict,
+        floor_num: int = 4,
+        kernel_size: int = 3,
+        channel_num: int = 64,
+        conv_times: int = 2,
     ):
-        super(UNet_Net, self).__init__()
+        super(UNet, self).__init__(
+            batch_sampler=TwoDimBatchSampler(),
+            loss_fn=ce_minus_log_dice,
+        )
         self.floor_num = floor_num
-        self.image_chns = image_chns
+        image_chns, class_num = data_format['channels'], data_format['class_num']
         self.down_layers = nn.ModuleList()
         self.up_layers = nn.ModuleList()
 
-        in_conv = Conv_N_Times(image_chns, channel_num, kernel_size, conv_times)
+        in_conv = ConvNTimes(image_chns, channel_num, kernel_size, conv_times)
         self.down_layers.append(in_conv)
         for floor_idx in range(floor_num):
             channel_times = 2 ** floor_idx
-            d = DnConv(channel_num * channel_times, kernel_size, conv_times)
+            d = DownConv(channel_num * channel_times, kernel_size, conv_times)
             self.down_layers.append(d)
 
         for floor_idx in range(floor_num)[::-1]:
@@ -73,7 +40,10 @@ class UNet_Net(nn.Module):
             self.up_layers.append(u)
         self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, inp):
+        x = normalize_batch_image(inp)
+        x = get_tensor_from_array(x)
+
         x_out = []
         for down_layer in self.down_layers:
             x = down_layer(x)
@@ -86,9 +56,10 @@ class UNet_Net(nn.Module):
         return x
 
 
-class Conv_N_Times(nn.Module):
+class ConvNTimes(nn.Module):
+
     def __init__(self, in_ch, out_ch, kernel_size, conv_times):
-        super(Conv_N_Times, self).__init__()
+        super(ConvNTimes, self).__init__()
         assert(conv_times > 0)
         self.convs = nn.ModuleList()
         self.batchnorms = nn.ModuleList()
@@ -112,13 +83,14 @@ class Conv_N_Times(nn.Module):
         return x
 
 
-class DnConv(nn.Module):
+class DownConv(nn.Module):
+
     def __init__(self, in_ch, kernel_size, conv_times):
         out_ch = in_ch * 2
-        super(DnConv, self).__init__()
+        super(DownConv, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
-            Conv_N_Times(in_ch, out_ch, kernel_size, conv_times)
+            ConvNTimes(in_ch, out_ch, kernel_size, conv_times)
         )
 
     def forward(self, x):
@@ -127,7 +99,8 @@ class DnConv(nn.Module):
 
 
 class UpConv(nn.Module):
-    def __init__(self, in_ch, kernel_size, conv_times, bilinear=True):
+
+    def __init__(self, in_ch, kernel_size, conv_times):
         super(UpConv, self).__init__()
         out_ch = in_ch // 2
         self.conv_transpose = nn.ConvTranspose2d(
@@ -137,14 +110,13 @@ class UpConv(nn.Module):
             padding=kernel_size // 2,
             stride=2,
         )
-        self.conv = Conv_N_Times(in_ch, out_ch, kernel_size, conv_times)
+        self.conv = ConvNTimes(in_ch, out_ch, kernel_size, conv_times)
 
     def forward(self, x_down, x_up):
-        # x1 = self.up(x1)
         x_down = self.conv_transpose(x_down)
-        diffX = x_up.size()[2] - x_down.size()[2]
-        diffY = x_up.size()[3] - x_down.size()[3]
-        x_down = F.pad(x_down, (0, diffX, 0, diffY))
+        diff_x = x_up.size()[2] - x_down.size()[2]
+        diff_y = x_up.size()[3] - x_down.size()[3]
+        x_down = F.pad(x_down, (0, diff_x, 0, diff_y))
         x = torch.cat([x_down, x_up], dim=1)
         x = self.conv(x)
         return x

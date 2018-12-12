@@ -13,9 +13,10 @@ np.random.seed(args.global_random_seed)
 
 from dotenv import load_dotenv
 
-from models import MODELS
-from data.data_providers import DataProviders
+from models import ModelHub
+from data.data_providers import DataProviderHub
 from utils import parse_exp_id
+from trainers.pytorch_trainer import PytorchTrainer
 
 load_dotenv('./.env')
 RESULT_DIR = os.environ.get('RESULT_DIR')
@@ -23,50 +24,35 @@ COMET_ML_KEY = os.environ.get('COMET_ML_KEY')
 if not os.path.exists(RESULT_DIR):
     os.mkdir(RESULT_DIR)
 
-if args.do_comet:
-    experiment = Experiment(
-        api_key=COMET_ML_KEY,
-        log_code=False,
-        project_name=args.comet_project,
-        workspace=args.comet_workspace,
-        parse_args=False,
-    )
+experiment = Experiment(
+    api_key=COMET_ML_KEY,
+    log_code=False,
+    project_name=args.comet_project,
+    workspace=args.comet_workspace,
+    parse_args=False,
+) if args.do_comet else None
 
 
 def flow(
         data_provider,
-        model,
+        trainer,
         fit_hyper_parameters=None,
     ):
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
-    if args.do_comet:
-        fit_hyper_parameters['experiment'] = experiment
-
-    if args.use_generator:
-        model.fit_generator(
-            training_datagenerator=data_provider.training_datagenerator,
-            validation_datagenerator=data_provider.testing_datagenerator,
-            metric=data_provider.metric,
-            **fit_hyper_parameters,
-        )
-    elif args.use_dataloader:
-        model.fit_dataloader(
-            get_training_dataloader=data_provider.get_training_dataloader,
-            get_validation_dataloader=data_provider.get_testing_dataloader,
-            metric=data_provider.metric,
-            **fit_hyper_parameters,
-        )
-    else:
-        model.fit(
-            training_data=data_provider.get_training_data(),
-            validation_data=data_provider.get_testing_data(),
-            metric=data_provider.metric,
-        )
+    trainer.fit_generator(
+        training_data_generator=data_provider.get_training_data_generator(),
+        validation_data_generator=data_provider.get_testing_data_generator(),
+        metric=data_provider.metric,
+        **fit_hyper_parameters,
+    )
 
 
 def main():
+    if args.do_comet:
+        experiment.log_multiple_params(vars(args))
+
     if args.checkpoint_dir is not None:
         folder_name = os.path.basename(os.path.normpath(args.checkpoint_dir))
         model_id, data_provider_id, time_stamp = parse_exp_id(folder_name)
@@ -79,23 +65,23 @@ def main():
     args.exp_id = os.environ.get('EXP_ID')
     print('EXP_ID:', os.environ.get('EXP_ID'))
 
-    get_data_provider, data_provider_parameters = DataProviders[args.data_provider_id]
+    data_provider_hub = DataProviderHub()
+    get_data_provider, data_provider_parameters = data_provider_hub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
-    get_model, fit_hyper_parameters = MODELS[args.model_id]
 
-    model = get_model(
-        **data_provider.get_data_format(),
-    )
-
+    get_model, fit_hyper_parameters = ModelHub[args.model_id]
+    model = get_model(data_provider.data_format)
     if args.checkpoint_dir is not None:
         model.load(args.checkpoint_dir)
 
-    if args.do_comet:
-        experiment.log_multiple_params(vars(args))
+    trainer = PytorchTrainer(
+        model=model,
+        comet_experiment=experiment
+    )
 
     flow(
         data_provider=data_provider,
-        model=model,
+        trainer=trainer,
         fit_hyper_parameters=fit_hyper_parameters,
     )
 
