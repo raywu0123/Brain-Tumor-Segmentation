@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
-from .batch_samplers.two_dim import TwoDimBatchSampler
 from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array, normalize_batch_image
 
@@ -17,7 +16,7 @@ class ToyModel(PytorchModelBase):
         kernel_size: int = 3,
     ):
         super(ToyModel, self).__init__(
-            batch_sampler=TwoDimBatchSampler(),
+            batch_sampler_id='two_dim',
             loss_fn=ce_minus_log_dice,
         )
         self.image_chns = data_format['channels']

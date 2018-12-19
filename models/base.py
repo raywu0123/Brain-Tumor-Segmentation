@@ -3,14 +3,21 @@ from abc import ABC, abstractmethod
 import torch
 from torch import nn
 
-from .batch_samplers.base import BatchSamplerBase
+from .batch_samplers.two_dim import TwoDimBatchSampler
+from .batch_samplers.three_dim import ThreeDimBatchSampler
+from .batch_samplers.patch3d import Patch3DBatchSampler
 from .utils import summarize_logs
 
 
 class ModelBase(ABC):
 
-    def __init__(self, batch_sampler: BatchSamplerBase):
-        self.batch_sampler = batch_sampler
+    def __init__(self, batch_sampler_id: str):
+        sampler_hub = {
+            'two_dim': TwoDimBatchSampler,
+            'three_dim': ThreeDimBatchSampler,
+            'patch3d': Patch3DBatchSampler,
+        }
+        self.batch_sampler = sampler_hub[batch_sampler_id]()
 
     @abstractmethod
     def fit_generator(self, training_data_generator, optimizer, **kwargs):
@@ -23,9 +30,9 @@ class ModelBase(ABC):
 
 class PytorchModelBase(ModelBase, nn.Module):
 
-    def __init__(self, batch_sampler: BatchSamplerBase, loss_fn):
+    def __init__(self, batch_sampler_id: str, loss_fn):
         nn.Module.__init__(self)
-        ModelBase.__init__(self, batch_sampler=batch_sampler)
+        ModelBase.__init__(self, batch_sampler_id=batch_sampler_id)
         self.loss_fn = loss_fn
 
     def fit_generator(self, training_data_generator, optimizer, **kwargs):

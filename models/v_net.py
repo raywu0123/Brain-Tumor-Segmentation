@@ -3,9 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-# from .utils import weighted_cross_entropy, soft_dice_score, get_tensor_from_array
 from .base import PytorchModelBase
-from .batch_samplers.three_dim import ThreeDimBatchSampler
 from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array
 
@@ -14,12 +12,8 @@ def activation_fn():
     return nn.ReLU()
 
 
-###########################################################
-#             Vnet_net                                    #
-#  input   [batch_num, input_channel,  D,   H,   W]       #
-#  output  [batch_num,             2,  D,   H,   W]       #
-###########################################################
 class VNet(PytorchModelBase):
+
     def __init__(
             self,
             data_format: dict,
@@ -27,9 +21,10 @@ class VNet(PytorchModelBase):
             kernel_size: int = 5,
             conv_time: int = 2,
             n_layer: int = 4,
+            batch_sampler_id='three_dim',
         ):
         super(VNet, self).__init__(
-            batch_sampler=ThreeDimBatchSampler(),
+            batch_sampler_id=batch_sampler_id,
             loss_fn=ce_minus_log_dice,
         )
         # To work properly, kernel_size must be odd
@@ -42,16 +37,16 @@ class VNet(PytorchModelBase):
 
         self.duplicate = Duplicate(data_format['channels'], duplication_num, kernel_size)
         for i in range(n_layer):
-            n_channel = np.power(2, i) * duplication_num
+            n_channel = (2 ** i) * duplication_num
             down_conv = DownConv(n_channel, kernel_size, conv_time)
             self.down.append(down_conv)
 
         for i in range(n_layer - 1):
-            n_channel = np.power(2, i) * duplication_num
+            n_channel = (2 ** i) * duplication_num
             up_conv = UpConv(n_channel * 4, n_channel, kernel_size, conv_time)
             self.up.append(up_conv)
 
-        n_channel = np.power(2, n_layer - 1) * duplication_num
+        n_channel = (2 ** (n_layer - 1)) * duplication_num
         up_conv = UpConv(n_channel * 2, n_channel, kernel_size, conv_time)
         self.up.append(up_conv)
         self.output_layer = OutLayer(duplication_num * 2, data_format['class_num'])
@@ -86,6 +81,7 @@ class VNet(PytorchModelBase):
 #  output  [batch_num, output_channel,  D/2, H/2, W/2]    #
 ###########################################################
 class DownConv(nn.Module):
+
     def __init__(self, input_channel, kernel_size, conv_time):
         super(DownConv, self).__init__()
         output_channel = input_channel * 2
@@ -110,6 +106,7 @@ class DownConv(nn.Module):
 #  output  [batch_num, x2_channel*2,  D*2, H*2, W*2]      #
 ###########################################################
 class UpConv(nn.Module):
+
     def __init__(self, x1_channel, x2_channel, kernel_size, conv_time):
         super(UpConv, self).__init__()
         self.up_conv = nn.ConvTranspose3d(x1_channel, x2_channel, kernel_size=2, stride=2)
@@ -143,6 +140,7 @@ class UpConv(nn.Module):
 #  output  [batch_num, channel_num,   D,   H,   W]        #
 ###########################################################
 class ConvNTimes(nn.Module):
+
     def __init__(self, channel_num, kernel_size, N):
         super(ConvNTimes, self).__init__()
 
@@ -171,6 +169,7 @@ class ConvNTimes(nn.Module):
 #  output  [batch_num, duplication_num,  D,   H,   W]     #
 ###########################################################
 class Duplicate(nn.Module):
+
     def __init__(self, input_channel, duplication_num, kernel_size):
         super(Duplicate, self).__init__()
         self.duplicate = nn.Conv3d(input_channel, duplication_num,
@@ -191,6 +190,7 @@ class Duplicate(nn.Module):
 #  output  [batch_num, 2,                  D,   H,   W]   #
 ###########################################################
 class OutLayer(nn.Module):
+
     def __init__(self, input_channel, class_num):
         super(OutLayer, self).__init__()
         self.conv = nn.Conv3d(input_channel, class_num, kernel_size=1)
