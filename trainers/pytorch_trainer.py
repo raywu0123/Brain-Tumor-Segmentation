@@ -71,9 +71,9 @@ class PytorchTrainer(TrainerBase, ABC):
                     validation_data_generator, metric, batch_size=batch_size
                 )
                 if self.comet_experiment is not None:
-                    self.comet_experiment.log_multiple_metrics(
+                    self.comet_experiment.log_metrics(
                         log_dict, prefix='training', step=self.i_epoch
                     )
-                    self.comet_experiment.log_multiple_metrics(
+                    self.comet_experiment.log_metrics(
                         metrics, prefix='validation', step=self.i_epoch
                     )

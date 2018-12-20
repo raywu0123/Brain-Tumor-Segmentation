@@ -54,7 +54,7 @@ ModelHub = {
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 1,
+            'batch_size': 50,
         },
     ),
 }

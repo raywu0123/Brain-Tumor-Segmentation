@@ -9,5 +9,5 @@ class BatchSamplerBase(ABC):
         pass
 
     @abstractmethod
-    def reassemble(self, prediction: list, test_data: list, **kwargs):
+    def reassemble(self, prediction: list, test_data: dict, **kwargs):
         pass
