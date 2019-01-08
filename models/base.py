@@ -3,21 +3,11 @@ from abc import ABC, abstractmethod
 import torch
 from torch import nn
 
-from .batch_samplers.two_dim import TwoDimBatchSampler
-from .batch_samplers.three_dim import ThreeDimBatchSampler
-from .batch_samplers.patch3d import Patch3DBatchSampler
+from .batch_samplers import BatchSamplerHub
 from .utils import summarize_logs
 
 
 class ModelBase(ABC):
-
-    def __init__(self, batch_sampler_id: str):
-        sampler_hub = {
-            'two_dim': TwoDimBatchSampler,
-            'three_dim': ThreeDimBatchSampler,
-            'patch3d': Patch3DBatchSampler,
-        }
-        self.batch_sampler = sampler_hub[batch_sampler_id]()
 
     @abstractmethod
     def fit_generator(self, training_data_generator, optimizer, **kwargs):
@@ -32,11 +22,17 @@ class PytorchModelBase(ModelBase, nn.Module):
 
     def __init__(self, batch_sampler_id: str, loss_fn):
         nn.Module.__init__(self)
-        ModelBase.__init__(self, batch_sampler_id=batch_sampler_id)
         self.loss_fn = loss_fn
+        self.batch_sampler_constructor = BatchSamplerHub[batch_sampler_id]
+        self.batch_sampler = None
 
     def fit_generator(self, training_data_generator, optimizer, **kwargs):
         self.train()
+        if not self.batch_sampler:
+            self.batch_sampler = self.batch_sampler_constructor(
+                data_format=training_data_generator.data_format
+            )
+
         data = training_data_generator(batch_size=1)
         batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(
             data, training=True, **kwargs

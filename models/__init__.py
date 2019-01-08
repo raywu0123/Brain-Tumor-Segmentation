@@ -41,6 +41,7 @@ ModelHub = {
     'v_net': (
         partial(
             VNet,
+            duplication_num=8,
         ),
         {
             **DEFAULT_TRAINING_PARAM,
@@ -50,11 +51,11 @@ ModelHub = {
     'v_net_patch': (
         partial(
             VNet,
-            batch_sampler_id='patch3d'
+            batch_sampler_id='center_patch3d'
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 50,
+            'batch_size': 20,
         },
     ),
 }

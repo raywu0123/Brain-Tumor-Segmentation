@@ -9,6 +9,9 @@ from ..utils import co_shuffle
 
 class TwoDimBatchSampler(BatchSamplerBase):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def convert_to_feedable(self, batch_data, batch_size, training=False, **kwargs):
         volume = batch_data['volume']
         label = batch_data['label']
@@ -28,8 +31,7 @@ class TwoDimBatchSampler(BatchSamplerBase):
         return feedable_data_list, feedable_label_list
 
     def reassemble(self, preds: list, test_data: dict, **kwargs):
-        all_segmentations = np.asarray([pred for pred in preds])
-        all_segmentations = all_segmentations.reshape(-1, *all_segmentations.shape[2:])
+        all_segmentations = np.concatenate(preds, axis=0)
         data_depth = test_data['volume'].shape[2]
         volume_segmentations = get_3d_from_2d(all_segmentations, data_depth)
         return volume_segmentations

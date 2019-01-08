@@ -15,7 +15,10 @@ def get_2d_from_3d(batch_volume):
 
 
 def get_3d_from_2d(batch_image, data_depth):
-    assert (batch_image.ndim == 4)
+    if not batch_image.ndim == 4:
+        raise TypeError(
+            f'batch_image should have 4 dimensions, got shape {batch_image.shape}'
+        )
     batch_volume = batch_image.reshape(-1, data_depth, *batch_image.shape[-3:])
     batch_volume = batch_volume.transpose([0, 2, 1, 3, 4])
     return batch_volume

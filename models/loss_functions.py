@@ -7,32 +7,25 @@ epsilon = 1e-8
 
 
 def ce_minus_log_dice(pred: torch.Tensor, tar: np.array):
-
-    channel_num = tar.shape[1]
-    temp = np.swapaxes(tar, 0, 1).reshape(channel_num, -1)
-    class_weights = np.divide(
-        1., np.mean(temp, axis=(1)),
-        out=np.ones(tar.shape[1]),
-        where=np.mean(temp, axis=(1)) != 0,
-    )
-
-    tar = get_tensor_from_array(tar)
-    crossentropy_loss, log_1 = weighted_cross_entropy(pred, tar, weights=class_weights)
+    crossentropy_loss, log_1 = weighted_cross_entropy(pred, tar)
     dice_score, log_2 = soft_dice_score(pred, tar)
     total_loss = crossentropy_loss - torch.log(dice_score)
     return total_loss, {**log_1, **log_2}
 
 
-def weighted_cross_entropy(output: torch.Tensor, target: torch.Tensor, weights=None):
+def weighted_cross_entropy(output: torch.Tensor, target: np.array):
     assert(output.shape == target.shape)
-    if weights is None:
-        weights = (1,) * output.shape[1]
-    else:
-        assert(len(weights) == output.shape[1])
 
-    weights = torch.Tensor(weights)
-    if torch.cuda.is_available():
-        weights = weights.cuda()
+    channel_num = target.shape[1]
+    temp = np.swapaxes(target, 0, 1).reshape(channel_num, -1)
+    weights = np.divide(
+        1., np.mean(temp, axis=1),
+        out=np.ones(target.shape[1]),
+        where=np.mean(temp, axis=1) != 0,
+    )
+
+    weights = get_tensor_from_array(weights)
+    target = get_tensor_from_array(target)
 
     target = target.transpose(1, -1)
     output = output.transpose(1, -1)
@@ -41,12 +34,14 @@ def weighted_cross_entropy(output: torch.Tensor, target: torch.Tensor, weights=N
     return loss, {'crossentropy_loss': loss.item()}
 
 
-def soft_dice_score(pred: torch.Tensor, tar: torch.Tensor):
+def soft_dice_score(pred: torch.Tensor, tar: np.array):
     if not pred.shape == tar.shape:
         raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {tar.shape}')
     if not pred.shape[1] > 1:
         raise ValueError(f'Number of channels should be greater than 1, '
                          f'got data with shape {pred.shape}')
+    tar = get_tensor_from_array(tar)
+
     # Strip background
     pred = pred[:, 1:]
     tar = tar[:, 1:]

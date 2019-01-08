@@ -3,6 +3,9 @@ from .base import BatchSamplerBase
 
 class ThreeDimBatchSampler(BatchSamplerBase):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def convert_to_feedable(self, batch_data, batch_size, training=False, **kwargs):
 
         volume = batch_data['volume']

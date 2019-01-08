@@ -51,7 +51,7 @@ def flow(
 
 def main():
     if args.do_comet:
-        experiment.log_multiple_params(vars(args))
+        experiment.log_parameters(vars(args))
 
     if args.checkpoint_dir is not None:
         folder_name = os.path.basename(os.path.normpath(args.checkpoint_dir))
