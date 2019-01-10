@@ -84,6 +84,6 @@ class NormalizedDataGeneratorWrapper(DataGeneratorBase):
     def _normalize_volume(batch_volume):
         if not batch_volume.ndim == 5:
             raise ValueError('input is not a volume')
-        mean = np.mean(batch_volume, axis=tuple(range(1, batch_volume.ndim)))
-        std = np.std(batch_volume, axis=tuple(range(1, batch_volume.ndim)))
+        mean = np.mean(batch_volume, axis=tuple(range(2, batch_volume.ndim)), keepdims=True)
+        std = np.std(batch_volume, axis=tuple(range(2, batch_volume.ndim)), keepdims=True)
         return (batch_volume - mean) / std

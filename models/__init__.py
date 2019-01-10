@@ -21,10 +21,8 @@ ModelHub = {
     'toy_model_big': (
         partial(
             ToyModel,
-            **{
-                'num_units': (64, 128, 256, 512, 1024),
-                'pooling_layer_num': (0, 1, 2),
-            },
+            num_units=(64, 128, 256, 512, 1024),
+            pooling_layer_num=(0, 1, 2),
         ),
         {
             **DEFAULT_TRAINING_PARAM,
@@ -43,10 +41,21 @@ ModelHub = {
     'v_net': (
         partial(
             VNet,
+            duplication_num=8,
         ),
         {
             **DEFAULT_TRAINING_PARAM,
             'batch_size': 1,
+        },
+    ),
+    'v_net_patch': (
+        partial(
+            VNet,
+            batch_sampler_id='center_patch3d'
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 20,
         },
     ),
 }
