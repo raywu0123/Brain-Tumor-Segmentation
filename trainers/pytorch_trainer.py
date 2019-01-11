@@ -20,7 +20,9 @@ class PytorchTrainer(TrainerBase, ABC):
             lr: float = 1e-4,
     ):
         self.comet_experiment = comet_experiment
+
         self.model = model
+        print(f'Total parameters: {self.count_parameters()}')
         if torch.cuda.is_available():
             self.model.cuda()
 
@@ -28,6 +30,9 @@ class PytorchTrainer(TrainerBase, ABC):
         self.i_epoch = 0
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
+
+    def count_parameters(self):
+        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
     def save(self):
         torch.save(
