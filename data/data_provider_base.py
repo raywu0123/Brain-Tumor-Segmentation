@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 from utils import MetricClass
 from .wrappers import (
     AsyncDataGeneratorWrapper,
-    AugmentedDataGeneratorWrapper,
     NormalizedDataGeneratorWrapper,
+    # AugmentedDataGeneratorWrapper,
 )
 
 
@@ -21,8 +21,8 @@ class DataProviderBase(ABC):
     def _get_data_generator(self, data_ids, augmentation, async_load=True, **kwargs):
         data_generator = self._get_raw_data_generator(data_ids, **kwargs)
         data_generator = NormalizedDataGeneratorWrapper(data_generator)
-        if augmentation:
-            data_generator = AugmentedDataGeneratorWrapper(data_generator)
+        # if augmentation:
+        #     data_generator = AugmentedDataGeneratorWrapper(data_generator)
         if async_load:
             data_generator = AsyncDataGeneratorWrapper(data_generator)
         return data_generator

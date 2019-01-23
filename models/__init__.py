@@ -41,21 +41,30 @@ ModelHub = {
     'v_net': (
         partial(
             VNet,
-            duplication_num=8,
         ),
         {
             **DEFAULT_TRAINING_PARAM,
             'batch_size': 1,
         },
     ),
-    'v_net_patch': (
+    'v_net_uniform_patch': (
         partial(
             VNet,
-            batch_sampler_id='center_patch3d'
+            batch_sampler_id='uniform_patch3d',
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 20,
+            'batch_size': 15,
+        },
+    ),
+    'v_net_center_patch': (
+        partial(
+            VNet,
+            batch_sampler_id='center_patch3d',
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 15,
         },
     ),
 }

@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
-from .loss_functions import weighted_cross_entropy
+from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array
 
 
@@ -12,14 +12,14 @@ class VNet(PytorchModelBase):
             self,
             data_format: dict,
             duplication_num: int = 16,
-            kernel_size: int = 3,
+            kernel_size: int = 4,
             conv_time: int = 2,
             n_layer: int = 3,
             batch_sampler_id='three_dim',
         ):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
-            loss_fn=weighted_cross_entropy,
+            loss_fn=ce_minus_log_dice,
         )
         # To work properly, kernel_size must be odd
         if kernel_size % 2 == 0:
