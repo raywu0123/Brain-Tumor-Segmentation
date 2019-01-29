@@ -3,15 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# from .base import PytorchModelBase
-# from .loss_functions import weighted_cross_entropy
-# from .utils import get_tensor_from_array
+from .base import PytorchModelBase
+from .loss_functions import weighted_cross_entropy_with_size_mismatch
+from .utils import get_tensor_from_array
+
+
 ###########################################################
 #                  Deepmedic                              #
-#  input    [batch_num, in_channel,   D1, H1,  W1 ]       #
-#           [batch_num, in_channel,   D2, H2,  W2 ]       #
-#  to work properly, D1, H1, W1 should be bigger than     #
-#  D2, H2, W2                                             #
+#  input    [batch_num, in_channel,   D,  H,   W  ]       #
+#  [D1, H1, W1] =  [D, H, W] // 2                         #
 #                                                         #
 #  output   [batch_num, out_channel,  D', H',  W' ]       #
 #  D' = D1 - (kernel_size - 1) * conv_time * block_num    #
@@ -20,7 +20,6 @@ import torch.nn.functional as F
 #  notice that D', H', W' should > 0                      #
 #                                                         #
 #                 for initialize                          #
-#  data_format = [x1.shape, x2.shape]                     #
 #  channel_list =                                         #
 #  [[x0, x1], [x1, x2] ... [xn-3, xn-2], [xn-1, xn]]      #
 #   x0      = input_channel                               #
@@ -28,32 +27,43 @@ import torch.nn.functional as F
 #   x2~xn-2 = block channel num                           #
 #   xn-1    = final block input channel, = 2 * xn-2       #
 ###########################################################
-class Deepmedic(nn.Module):
+class Deepmedic(PytorchModelBase):
     def __init__(
             self,
             data_format: dict,
-            channel_list: dict,
-            out_channel: int = 2,
+            channel_list: list,
             kernel_size: int = 3,
             conv_time: int = 2,
-            batch_sampler_id='three_dim',
+            batch_sampler_id='center_patch3d',
         ):
-        super(Deepmedic, self).__init__()
+        super(Deepmedic, self).__init__(
+            batch_sampler_id=batch_sampler_id,
+            loss_fn=weighted_cross_entropy_with_size_mismatch,
+        )
         if kernel_size % 2 == 0:
             raise AssertionError('kernel_size({}) must be odd'.format(kernel_size))
+        self.pool = nn.AvgPool3d(kernel_size=5, stride=3, padding=1)
 
-        self.duplicate1 = Duplicate(channel_list[0][0], channel_list[0][1], kernel_size)
-        self.duplicate2 = Duplicate(channel_list[0][0], channel_list[0][1], kernel_size)
+        self.duplicate1 = Duplicate(data_format['channels'], channel_list[0][1], kernel_size)
+        self.duplicate2 = Duplicate(data_format['channels'], channel_list[0][1], kernel_size)
 
         self.first = Path(channel_list[1:-1], kernel_size, conv_time)
         self.second = Path(channel_list[1:-1], kernel_size, conv_time)
-        self.block = Block(channel_list[-1][0], channel_list[-1][1], kernel_size, conv_time)
+        self.block = Block(channel_list[-1][0], channel_list[-1][1], 1, conv_time)
 
-        self.out = Block(channel_list[-1][1], out_channel, kernel_size=1, conv_time=1, route=False)
+        self.out = Block(channel_list[-1][1], data_format['class_num'],
+                         kernel_size=1, conv_time=1, route=False)
 
-    def forward(self, x1, x2):
-        x1 = get_tensor_from_array(x1)
-        x2 = get_tensor_from_array(x2)
+    def forward(self, inp):
+        inp = get_tensor_from_array(inp)
+
+        # x1 : for high resolution, x2 for low resolution
+        # c_ : cut inp to smaller piece in the middle
+        c_d = inp.shape[2] // 4
+        c_h = inp.shape[3] // 4
+        c_w = inp.shape[4] // 4
+        x1 = inp[:, :, c_d:-c_d, c_h:-c_h, c_w:-c_w]
+        x2 = self.pool(inp)
 
         x1 = self.duplicate1(x1)
         x2 = self.duplicate2(x2)
@@ -73,7 +83,18 @@ class Deepmedic(nn.Module):
         x = self.block(x)
 
         x = self.out(x)
+        x = F.softmax(x, dim=1)
         return x
+
+    def predict(self, test_data, **kwargs):
+        test_data = test_data['volume']
+        self.eval()
+        patch_list = get_patch(test_data)
+        pred_list = []
+        for patch in patch_list:
+            pred = self.forward(patch).cpu().data.numpy()
+            pred_list.append(pred)
+        return reassemble(pred_list, test_data)
 
 
 class Path(nn.Module):
@@ -96,7 +117,8 @@ class Path(nn.Module):
 ###########################################################
 #              Block                                      #
 #  input    [batch_num, in_channel,     D,  H,  W ]       #
-#           route = True for residual connection          #
+#           [route] True for residual connection          #
+#                                                         #
 #  output   [batch_num, out_channel*2,  D', H', W']       #
 #  D' = D - (kernel_size - 1) * conv_time                 #
 #  H' = H - (kernel_size - 1) * conv_time                 #
@@ -139,18 +161,18 @@ class Block(nn.Module):
             # crop x to x1
             d_ch = x1.shape[1] - x.shape[1]
             d_pix = x.shape[2] - x1.shape[2]
-            if d_pix % 2 != 0:
-                raise AssertionError('shape Error', x.shape, x1.shape)
-            d = d_pix // 2
-            x = x[:, :, d:-d, d:-d, d:-d]
+
+            if d_pix != 0:
+                if d_pix % 2 != 0:
+                    raise AssertionError('shape Error', x.shape, x1.shape)
+                d = d_pix // 2
+                x = x[:, :, d:-d, d:-d, d:-d]
 
             if d_ch != 0:
                 # add channel to x
-                b = x.shape[0]
-                d = x.shape[2]
-                h = x.shape[3]
-                w = x.shape[4]
-                empty = torch.zeros((b, d_ch, d, h, w))
+                pad_shape = list(x.shape)
+                pad_shape[1] = d_ch
+                empty = torch.zeros(pad_shape)
                 if x.is_cuda:
                     empty = empty.cuda()
                 x = torch.cat((x, empty), 1)
@@ -175,25 +197,126 @@ class Duplicate(nn.Module):
         )
         self.batch_norm = nn.BatchNorm3d(duplication_num)
 
-    def forward(self, inp):
-        x = self.duplicate(inp)
-        x = self.batch_norm(x)
-        x = F.relu(x)
+    def forward(self, x):
+        x = self.duplicate(x)
         return x
 
 
-# ---------- testing function ---------- #
-def get_tensor_from_array(x):
-    x = torch.from_numpy(x).float().cuda()
-    return x
+"""
+functions for deepmedic prediction
+
+function description
+
+having a function
+inp = [N, c_in,  64, 64, 64]
+out = [N, c_out, 16, 16, 16]
+
+we want to predict array [N, c_out, d, h, w]
+"""
+from math import ceil
+import numpy as np
 
 
-if __name__ == '__main__':
-    import numpy as np
-    x1 = np.zeros((10, 1, 25, 25, 25))
-    x2 = np.zeros((10, 1, 19, 19, 19))
-    data_format = np.array([x1.shape, x2.shape])
-    channel_list = [[1, 4], [4, 30], [30, 40], [40, 40], [40, 50], [50 * 2, 150]]
-    deepmedic = Deepmedic(data_format, channel_list).cuda()
-    x = deepmedic(x1, x2)
-    print(x.shape)
+def get_patch(data):
+    # first, we need to pad the array with size 24 arround
+    # since our ouput will loss 24 pixels at each boundary
+    data_pad = np.pad(data,
+                      ((0, 0), (0, 0), (24, 24), (24, 24), (24, 24)),
+                      'constant',
+                      constant_values=0)
+
+    # pad data such that it can be divide by 16
+    if data.shape[2] % 16 != 0:
+        d_p = 16 - data.shape[2] % 16
+    else:
+        d_p = 0
+
+    if data.shape[3] % 16 != 0:
+        h_p = 16 - data.shape[3] % 16
+    else:
+        h_p = 0
+
+    if data.shape[4] % 16 != 0:
+        w_p = 16 - data.shape[4] % 16
+    else:
+        w_p = 0
+
+    data_pad = np.pad(data_pad,
+                      ((0, 0), (0, 0), (0, d_p), (0, h_p), (0, w_p)),
+                      'constant',
+                      constant_values=0)
+
+    # then we need to get the vertex of patch
+    vertex_list = []
+    for d in range(data_pad.shape[2] // 16):
+        for h in range(data_pad.shape[3] // 16):
+            for w in range(data_pad.shape[4] // 16):
+                vertex_list.append([d * 16, h * 16, w * 16])
+
+    patch_list = []
+    shape = data_pad.shape
+    for vertex in vertex_list:
+        d_e = vertex[0] + 64
+        h_e = vertex[1] + 64
+        w_e = vertex[2] + 64
+        if(d_e <= shape[2] and h_e <= shape[3] and w_e <= shape[4]):
+            patch = data_pad[:, :,
+                             vertex[0]:vertex[0] + 64,
+                             vertex[1]:vertex[1] + 64,
+                             vertex[2]:vertex[2] + 64]
+            patch_list.append(patch)
+    return patch_list
+
+
+def reassemble(pred_list, data):
+    d_n = ceil(data.shape[2] / 16)
+    h_n = ceil(data.shape[3] / 16)
+    w_n = ceil(data.shape[4] / 16)
+
+    # this assertion should never occur, or the logit is wrong
+    # to fix it you might rewrite the prediction
+    if len(pred_list) != (d_n * h_n * w_n):
+        raise AssertionError("shape mismatch", len(pred_list),
+                             d_n * h_n * w_n)
+
+    shape = list(data.shape)
+    shape[1] = pred_list[0].shape[1]
+    pred_all = np.zeros(shape)
+    idx = 0
+    for d in range(d_n):
+        for h in range(h_n):
+            for w in range(w_n):
+                pred = pred_list[idx]
+                # consider the situation at the boundary
+                d_cut = 16
+                if d * 16 + 16 > data.shape[2]:
+                    d_cut = data.shape[2] - d * 16
+
+                h_cut = 16
+                if h * 16 + 16 > data.shape[3]:
+                    h_cut = data.shape[3] - h * 16
+
+                w_cut = 16
+                if w * 16 + 16 > data.shape[4]:
+                    w_cut = data.shape[4] - w * 16
+
+                pred_all[
+                    :, :,
+                    d * 16:d * 16 + d_cut,
+                    h * 16:h * 16 + h_cut,
+                    w * 16:w * 16 + w_cut,
+                ] = pred[:, :, :d_cut, :h_cut, :w_cut]
+                idx = idx + 1
+    return pred_all
+
+
+# -------- testing functions for prediction -------- #
+if __name__ == "__main__":
+    data = np.random.rand(1, 2, 200, 200, 200)
+    patch_list = get_patch(data)
+    pred_list = []
+    for patch in patch_list:
+        pred = patch[:, :, 24:-24, 24:-24, 24:-24]
+        pred_list.append(pred)
+    pred_all = reassemble(pred_list, data)
+    print(np.all(pred_all == data))
