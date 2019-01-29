@@ -20,6 +20,7 @@ class UNet(PytorchModelBase):
         super(UNet, self).__init__(
             batch_sampler_id='two_dim',
             loss_fn=ce_minus_log_dice,
+            data_format=data_format,
         )
         self.floor_num = floor_num
         image_chns, class_num = data_format['channels'], data_format['class_num']

@@ -18,6 +18,7 @@ class ToyModel(PytorchModelBase):
         super(ToyModel, self).__init__(
             batch_sampler_id='two_dim',
             loss_fn=ce_minus_log_dice,
+            data_format=data_format,
         )
         self.image_chns = data_format['channels']
         self.image_height = data_format['height']

@@ -5,8 +5,7 @@ import pickle
 import os
 
 
-def save_array_to_nii(np_array, save_path, original_nii):
-    affine = original_nii.affine
+def save_array_to_nii(np_array, save_path, affine=None):
     empty_header = nib.Nifti1Header()
     new_nii = nib.Nifti1Image(np_array, affine, empty_header)
     nib.save(new_nii, save_path)

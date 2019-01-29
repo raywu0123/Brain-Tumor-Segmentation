@@ -71,12 +71,11 @@ def main():
 
     get_model, fit_hyper_parameters = ModelHub[args.model_id]
     model = get_model(data_provider.data_format)
-    if args.checkpoint_dir is not None:
-        model.load(args.checkpoint_dir)
 
     trainer = PytorchTrainer(
         model=model,
-        comet_experiment=experiment
+        comet_experiment=experiment,
+        checkpoint_dir=args.checkpoint_dir,
     )
 
     flow(

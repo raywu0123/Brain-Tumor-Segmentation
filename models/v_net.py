@@ -21,6 +21,7 @@ class VNet(PytorchModelBase):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             loss_fn=ce_minus_log_dice,
+            data_format=data_format,
         )
         # To work properly, kernel_size must be odd
         if kernel_size % 2 == 0:

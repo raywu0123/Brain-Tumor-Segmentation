@@ -20,19 +20,16 @@ class ModelBase(ABC):
 
 class PytorchModelBase(ModelBase, nn.Module):
 
-    def __init__(self, batch_sampler_id: str, loss_fn):
+    def __init__(self, batch_sampler_id: str, loss_fn, data_format: dict):
         nn.Module.__init__(self)
         self.loss_fn = loss_fn
         self.batch_sampler_constructor = BatchSamplerHub[batch_sampler_id]
-        self.batch_sampler = None
+        self.batch_sampler = self.batch_sampler_constructor(
+            data_format=data_format
+        )
 
     def fit_generator(self, training_data_generator, optimizer, **kwargs):
         self.train()
-        if not self.batch_sampler:
-            self.batch_sampler = self.batch_sampler_constructor(
-                data_format=training_data_generator.data_format
-            )
-
         data = training_data_generator(batch_size=1)
         batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(
             data, training=True, **kwargs

@@ -144,4 +144,4 @@ class Brats2015DataGenerator(DataGeneratorBase):
 
         for idx, data_id in enumerate(data_ids):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
-        return {'volume': batch_volume, 'label': batch_label}
+        return {'volume': batch_volume, 'label': batch_label, 'data_ids': data_ids}
