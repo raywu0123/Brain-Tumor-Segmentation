@@ -48,6 +48,16 @@ ModelHub = {
             'batch_size': 1,
         },
     ),
+    'v_net_dropout0.1': (
+        partial(
+            VNet,
+            dropout_rate=0.1,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 1,
+        },
+    ),
     'v_net_uniform_patch': (
         partial(
             VNet,
