@@ -25,6 +25,7 @@ class PSPNet(PytorchModelBase):
         super().__init__(
             batch_sampler_id=batch_sampler_id,
             loss_fn=ce_minus_log_dice,
+            data_format=data_format,
         )
         self.feats = extractor_hub[backend](data_format['channels'], pretrained)
         self.psp = PSPModule(psp_size, 1024, sizes)
