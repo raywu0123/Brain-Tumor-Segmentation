@@ -22,6 +22,7 @@ opencv-python = "*"
 augmentor = "*"
 albumentations = "*"
 simpleitk = "*"
+torchvision = "*"
 
 [dev-packages]
 

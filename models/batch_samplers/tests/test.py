@@ -70,7 +70,7 @@ class Patch3DBatchSamplerTestCase(TestCase):
 
         self.batch_size = 3
 
-    def test_reverse(self):
+    def test_uniform_reverse(self):
         _, batch_label_list = self.uniform_sampler.convert_to_feedable(
             self.batch_data, batch_size=self.batch_size, training=False
         )
@@ -79,10 +79,14 @@ class Patch3DBatchSamplerTestCase(TestCase):
             np.all(reversed_batch_label == self.batch_label)
         )
 
-    def test_center_sampler(self):
-            _, batch_label_list = self.uniform_sampler.convert_to_feedable(
-                self.batch_data, batch_size=self.batch_size, training=True
-            )
-            _, batch_label_list = self.center_sampler.convert_to_feedable(
-                self.batch_data, batch_size=self.batch_size, training=True
-            )
+    def test_center_reverse(self):
+        _, batch_label_list = self.center_sampler.convert_to_feedable(
+            self.batch_data, batch_size=self.batch_size, training=False
+        )
+        for batch in batch_label_list:
+            self.assertTrue(np.all(batch.shape[-3:] == self.center_sampler.patch_size))
+
+        reversed_batch_label = self.center_sampler.reassemble(batch_label_list, self.batch_data)
+        self.assertTrue(
+            np.all(reversed_batch_label == self.batch_label)
+        )

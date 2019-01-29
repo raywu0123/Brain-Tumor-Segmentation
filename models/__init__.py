@@ -3,6 +3,7 @@ from functools import partial
 from .toy_model import ToyModel
 from .u_net import UNet
 from .v_net import VNet
+from .pspnet import PSPNet
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
@@ -65,6 +66,49 @@ ModelHub = {
         {
             **DEFAULT_TRAINING_PARAM,
             'batch_size': 15,
+        },
+    ),
+    'pspnet_2d_resnet34': (
+        partial(
+            PSPNet,
+            backend='resnet34'
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 40,
+        },
+    ),
+    'pspnet_2d_resnet50': (
+        partial(
+            PSPNet,
+            backend='resnet50',
+            psp_size=2048,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 20,
+        },
+    ),
+    'pspnet_2d_resnet101': (
+        partial(
+            PSPNet,
+            backend='resnet101',
+            psp_size=2048,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 10,
+        },
+    ),
+    'pspnet_2d_resnet152': (
+        partial(
+            PSPNet,
+            backend='resnet152',
+            psp_size=2048,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 10,
         },
     ),
 }
