@@ -23,7 +23,10 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         feedable_label_list = []
 
         index_list = self._generate_index_list(batch_label, random=training)
-        index_lists = np.array_split(index_list, ceil(len(index_list) / batch_size))
+        if len(index_list) != 0:
+            index_lists = np.array_split(index_list, ceil(len(index_list) / batch_size))
+        else:
+            index_lists = []
 
         for batch_indexes in index_lists:
             batch_patch_volume, batch_patch_label = \
@@ -82,6 +85,7 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         for random_n in random_n_list:
             if random_n not in indexes_dict:
                 selected_label = batch_label[random_n]
+
                 # find label except background
                 selected_label = np.sum(selected_label[1:], axis=0)
                 selected_label = (selected_label != 0)
@@ -89,10 +93,12 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
                 indexes_dict[random_n] = indexes
             else:
                 indexes = indexes_dict[random_n]
-            selected_label_position = random.choice(indexes)
-            patch_position = self._get_patch_position(selected_label_position)
-            selected_label_position = [random_n, *patch_position]
-            lists.append(selected_label_position)
+
+            if len(indexes) != 0:
+                selected_label_position = random.choice(indexes)
+                patch_position = self._get_patch_position(selected_label_position)
+                selected_label_position = [random_n, *patch_position]
+                lists.append(selected_label_position)
 
         return lists
 
