@@ -32,5 +32,5 @@ if __name__ == '__main__':
         save_array_to_nii(
             postprocessed_label,
             os.path.join(result_dir, 'label', f'{file_id}.nii.gz'),
-            label_obj,
+            label_obj.affine,
         )

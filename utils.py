@@ -40,7 +40,7 @@ def hard_max(x):
 
 
 def soft_dice(prob_pred, tar):
-    if not np.all(np.unique(tar) == np.array([0, 1])):
+    if not ((tar == 0) | (tar == 1)).all():
         raise ValueError('Target data should be binary.')
     intersection = tar * prob_pred
     dice_loss = (2 * np.sum(intersection) + epsilon) \
@@ -75,10 +75,11 @@ class MetricBase:
         self.tar = tar[:, 1:]
         self.do_all_metrics = {}
 
-    def all_metrics(self):
+    def all_metrics(self, verbose=True):
         results = {metric: metric_func() for (metric, metric_func) in self.do_all_metrics.items()}
-        for metric, result in results.items():
-            print(f'{metric}: {result}')
+        if verbose:
+            for metric, result in results.items():
+                print(f'{metric}: {result}')
         return results
 
 

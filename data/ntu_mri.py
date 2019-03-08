@@ -12,15 +12,21 @@ from dotenv import load_dotenv
 
 load_dotenv('./.env')
 
-NTU_MRI_DIR = os.environ.get('NTU_MRI_DIR')
-NTU_MOCK_TEST_DIR = os.environ.get('NTU_MOCK_TEST_DIR')
-NTU_TEST_DIR = os.environ.get('NTU_TEST_DIR')
-
 
 class NtuMriDataProvider(DataProviderBase):
 
+    NTU_MRI_DIR = os.environ.get('NTU_MRI_DIR')
+    NTU_MOCK_TEST_DIR = os.environ.get('NTU_MOCK_TEST_DIR')
+    NTU_TEST_DIR = os.environ.get('NTU_TEST_DIR')
+
+    DIR_HUB = {
+        'mri': NTU_MRI_DIR,
+        'mocktest': NTU_MOCK_TEST_DIR,
+        'test': NTU_TEST_DIR,
+    }
+
     def __init__(self, args):
-        self.data_dir = self._get_dir(args)
+        self.data_dir = self.DIR_HUB[args]
         self.image_path = os.path.join(self.data_dir, 'image')
         self.label_path = os.path.join(self.data_dir, 'label')
         self.all_ids = os.listdir(self.image_path)
@@ -29,16 +35,6 @@ class NtuMriDataProvider(DataProviderBase):
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
         return NtuDataGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
-
-    def _get_dir(self, args):
-        if 'mri' in args:
-            return NTU_MRI_DIR
-        if 'mocktest' in args:
-            return NTU_MOCK_TEST_DIR
-        if 'test' in args:
-            return NTU_TEST_DIR
-        else:
-            raise KeyError('illegal args to ntu mri data provider.')
 
     @property
     def data_format(self):
@@ -90,15 +86,23 @@ class NtuDataGenerator(DataGeneratorBase):
             self.data_format['height'],
             self.data_format['width'],
         ))
-
+        affines = []
         for idx, data_id in enumerate(data_ids):
-            batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)
-        return {'volume': batch_volume, 'label': batch_label}
+            batch_volume[idx], batch_label[idx], affine = self._get_image_and_label(data_id)
+            affines.append(affine)
+
+        return {
+            'volume': batch_volume,
+            'label': batch_label,
+            'data_ids': data_ids,
+            'affines': affines,
+        }
 
     def _get_image_and_label(self, data_id):
         # Dims: (N, C, D, H, W)
         img_path = os.path.join(self.image_path, data_id)
         image_obj = nib.load(img_path)
+        affine = image_obj.affine
         image = image_obj.get_fdata()
         image = np.transpose(image, (2, 0, 1))
 
@@ -110,4 +114,4 @@ class NtuDataGenerator(DataGeneratorBase):
         else:
             label = None
 
-        return image, label
+        return image, label, affine

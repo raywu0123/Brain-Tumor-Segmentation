@@ -1,11 +1,16 @@
 from abc import ABC
 import os
 
-import torch
 import comet_ml
+import torch
 from dotenv import load_dotenv
+import numpy as np
+from tqdm import tqdm
+
 
 from .base import TrainerBase
+from models.utils import summarize_logs
+from preprocess_tools.image_utils import save_array_to_nii
 
 load_dotenv('./.env')
 RESULT_DIR_BASE = os.environ.get('RESULT_DIR')
@@ -17,16 +22,21 @@ class PytorchTrainer(TrainerBase, ABC):
             self,
             model: torch.nn.Module,
             comet_experiment: comet_ml.Experiment = None,
+            checkpoint_dir=None,
             lr: float = 1e-4,
     ):
         self.comet_experiment = comet_experiment
 
         self.model = model
         print(f'Total parameters: {self.count_parameters()}')
+        self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
+
+        if checkpoint_dir is not None:
+            self.load(checkpoint_dir)
+
         if torch.cuda.is_available():
             self.model.cuda()
 
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.i_epoch = 0
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
@@ -82,3 +92,36 @@ class PytorchTrainer(TrainerBase, ABC):
                     self.comet_experiment.log_metrics(
                         metrics, prefix='validation', step=self.i_epoch
                     )
+
+    def predict_on_generator(self, data_generator, save_base_dir, metric, **kwargs):
+        prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
+        hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
+        if not os.path.exists(save_base_dir):
+            os.mkdir(save_base_dir)
+        if not os.path.exists(prob_prediction_path):
+            os.mkdir(prob_prediction_path)
+        if not os.path.exists(hard_prediction_path):
+            os.mkdir(hard_prediction_path)
+
+        metrics_list = []
+
+        print(f'predicting on {len(data_generator)} volumes...')
+        for _ in tqdm(range(len(data_generator))):
+            batch_data = data_generator(batch_size=1)
+            label = batch_data['label']
+            pred = self.model.predict(batch_data, **kwargs)
+
+            metrics = metric(pred, label).all_metrics(verbose=False)
+            metrics_list.append(metrics)
+
+            # to [D, H, W, C] format
+            pred = pred[0].transpose([2, 3, 1, 0])
+            hard_pred = np.argmax(pred, axis=-1)
+
+            data_id = batch_data['data_ids'][0]
+            affine = batch_data['affines'][0]
+
+            save_array_to_nii(pred, os.path.join(prob_prediction_path, data_id), affine)
+            save_array_to_nii(hard_pred, os.path.join(hard_prediction_path, data_id), affine)
+
+        print(summarize_logs(metrics_list))

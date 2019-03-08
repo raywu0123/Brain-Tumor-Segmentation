@@ -26,4 +26,4 @@ if __name__ == '__main__':
         mean_probs = np.mean(all_probs, axis=0)
         binary_pred = (mean_probs > 0.5).astype(float)
         save_path = os.path.join(result_path, filename)
-        save_array_to_nii(binary_pred, save_path, nii_obj)
+        save_array_to_nii(binary_pred, save_path, nii_obj.affine)

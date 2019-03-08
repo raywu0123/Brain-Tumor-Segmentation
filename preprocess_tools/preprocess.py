@@ -46,12 +46,12 @@ if __name__ == '__main__':
         save_array_to_nii(
             preprocessed_image,
             os.path.join(result_dir, 'image', f'{file_id}.nii.gz'),
-            image_obj,
+            image_obj.affine,
         )
         save_array_to_nii(
             preprocessed_label,
             os.path.join(result_dir, 'label', f'{file_id}.nii.gz'),
-            label_obj,
+            label_obj.affine,
         )
 
     image_processor.save(result_dir)
