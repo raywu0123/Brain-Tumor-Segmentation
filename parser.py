@@ -47,5 +47,11 @@ def brain_tumor_argparse():
         type=str,
         help='checkpoint directory to load the model',
     )
+    parser.add_argument(
+        '--predict_mode',
+        type=str,
+        help='Choose to predict on full dataset or only 1/10, [full/test]',
+        default='test',
+    )
     parser.set_defaults(do_comet=False)
     return parser

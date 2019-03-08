@@ -34,4 +34,5 @@ def summarize_logs(logs: [dict]) -> dict:
     for key in logs[0].keys():
         summary[key] = np.mean([d[key] for d in logs])
 
+    summary['data_count'] = len(logs)
     return summary

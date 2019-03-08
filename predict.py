@@ -37,14 +37,28 @@ def flow(
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
+    get_data_generator_fns = {
+        'full': data_provider.get_full_data_generator,
+        'test': data_provider.get_testing_data_generator,
+    }
+    get_data_generator_fn = get_data_generator_fns[args.predict_mode]
     all_metric_dict = trainer.predict_on_generator(
-        data_generator=data_provider.get_testing_data_generator(random=False),
+        data_generator=get_data_generator_fn(random=False),
         save_base_dir=os.path.join(args.checkpoint_dir, f'{args.data_provider_id}'),
         metric=data_provider.metric,
         **fit_hyper_parameters,
     )
+    all_metric_list = [all_metric_dict[key] for key in all_metric_dict.keys()]
+    print('#' * 30)
+    print(f'full average metric')
+    print('#' * 30)
+    print(summarize_logs(all_metric_list))
+
     if 'diagnosis' in data_provider.data_format:
-        data_generator = data_provider.get_testing_data_generator(random=False)
+        print('#' * 30)
+        print('metric by class')
+        print('#' * 30)
+        data_generator = get_data_generator_fn(random=False)
         metric_list_by_diagnosis = categorize_by_diagnosis(all_metric_dict, data_generator)
         for key in metric_list_by_diagnosis.keys():
             print(f'diagnosis: {key}, {summarize_logs(metric_list_by_diagnosis[key])}')
