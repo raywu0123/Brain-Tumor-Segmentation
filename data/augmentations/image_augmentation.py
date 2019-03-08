@@ -112,13 +112,13 @@ class ImageAugmentor(AugmentorBase):
         transformed_image = []
         transformed_label = []
         for image, label in zip(batch_image, batch_label):
-                augmentation = self._albumentations_strong_aug()
-                augmented_data = augmentation(image=image, mask=label)
-                augmented_image, augmented_label = augmented_data['image'], augmented_data['mask']
-                augmented_image = np.reshape(augmented_image, image.shape)
-                augmented_label = np.reshape(augmented_label, label.shape)
-                transformed_image.append(augmented_image)
-                transformed_label.append(augmented_label)
+            augmentation = self._albumentations_strong_aug()
+            augmented_data = augmentation(image=image, mask=label)
+            augmented_image, augmented_label = augmented_data['image'], augmented_data['mask']
+            augmented_image = np.reshape(augmented_image, image.shape)
+            augmented_label = np.reshape(augmented_label, label.shape)
+            transformed_image.append(augmented_image)
+            transformed_label.append(augmented_label)
 
         transformed_image = np.asarray(transformed_image)
         transformed_label = np.asarray(transformed_label)
