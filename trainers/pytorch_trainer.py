@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 
 from .base import TrainerBase
-from models.utils import summarize_logs
 from preprocess_tools.image_utils import save_array_to_nii
 
 load_dotenv('./.env')
@@ -103,16 +102,16 @@ class PytorchTrainer(TrainerBase, ABC):
         if not os.path.exists(hard_prediction_path):
             os.mkdir(hard_prediction_path)
 
-        metrics_list = []
+        metrics_dict = {}
 
         print(f'predicting on {len(data_generator)} volumes...')
         for _ in tqdm(range(len(data_generator))):
             batch_data = data_generator(batch_size=1)
-            label = batch_data['label']
+            label, data_id = batch_data['label'], batch_data['data_ids'][0]
             pred = self.model.predict(batch_data, **kwargs)
 
             metrics = metric(pred, label).all_metrics(verbose=False)
-            metrics_list.append(metrics)
+            metrics_dict[data_id] = metrics
 
             # to [D, H, W, C] format
             pred = pred[0].transpose([2, 3, 1, 0])
@@ -124,4 +123,4 @@ class PytorchTrainer(TrainerBase, ABC):
             save_array_to_nii(pred, os.path.join(prob_prediction_path, data_id), affine)
             save_array_to_nii(hard_pred, os.path.join(hard_prediction_path, data_id), affine)
 
-        print(summarize_logs(metrics_list))
+        return metrics_dict
