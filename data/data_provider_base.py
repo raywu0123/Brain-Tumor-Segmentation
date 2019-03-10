@@ -12,6 +12,13 @@ class DataProviderBase(ABC):
 
     _metric = MetricClass
 
+    def get_full_data_generator(self, **kwargs):
+        return self._get_data_generator(
+            self.train_ids + self.test_ids,
+            augmentation=False,
+            **kwargs
+        )
+
     def get_testing_data_generator(self, **kwargs):
         return self._get_data_generator(self.test_ids, augmentation=False, **kwargs)
 

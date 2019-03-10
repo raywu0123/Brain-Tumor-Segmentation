@@ -53,7 +53,7 @@ python main.py -m <model_id> -d <data_provider_id> -ug --comet
 
 0. (Recommended) If you wish to preprocess with masks, run:
 ``` 
-bash ./preprocess_tools/skull_strip.sh <bse_dir> <data_dir> <result_dir>
+bash ./preprocess_tools/skull_strip.sh <bse_dir> <result_dir> <data_dir>
 ``` 
 Where `bse_dir` is the binary file from the 
 [BrainSuite](http://brainsuite.org/) package.
@@ -61,14 +61,15 @@ Where `bse_dir` is the binary file from the
 
 1. To preprocess, run:
 ```
-python preprocess_tools/preprocess <data_dir> <mask_dir> <result_dir> 
+cd preprocess_tools
+python preprocess.py <data_dir> <mask_dir> <result_dir> 
 ```   
 * This script will resize to $1mm^3$ resolution and center the brain with its mask.  
 * The resulting shape is defined in the `ImageProcessor` class in `preprocess_tools/image_utils.py`
 
 2. To postprocess, run:
 ``` 
-python preprocess_tools/postprocess <lable_dir> <result_dir> <image_processor_path>
+python postprocess.py <lable_dir> <result_dir> <image_processor_path>
 ```
 * This script will revert the resolution and copy the according headers from the original nii file.
 

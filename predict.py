@@ -5,12 +5,28 @@ from parser import brain_tumor_argparse
 parser = brain_tumor_argparse()
 args = parser.parse_args()
 
+from tqdm import tqdm
+
 from trainers.pytorch_trainer import PytorchTrainer
 from models import ModelHub
+from models.utils import summarize_logs
 from data.data_providers import DataProviderHub
 from utils import parse_exp_id
 
 load_dotenv('./.env')
+
+
+def categorize_by_diagnosis(all_metric_dict, data_generator) -> dict:
+    print(f'categorizing on {len(data_generator)} volumes...')
+    categorized_dict = {}
+    for _ in tqdm(range(len(data_generator))):
+        batch_data = data_generator(batch_size=1)
+        data_id = batch_data['data_ids'][0]
+        diagnosis = batch_data['diagnosis'][0]
+        if diagnosis not in categorized_dict:
+            categorized_dict[diagnosis] = []
+        categorized_dict[diagnosis].append(all_metric_dict[data_id])
+    return categorized_dict
 
 
 def flow(
@@ -21,12 +37,31 @@ def flow(
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
-    trainer.predict_on_generator(
-        data_generator=data_provider.get_testing_data_generator(random=False),
+    get_data_generator_fns = {
+        'full': data_provider.get_full_data_generator,
+        'test': data_provider.get_testing_data_generator,
+    }
+    get_data_generator_fn = get_data_generator_fns[args.predict_mode]
+    all_metric_dict = trainer.predict_on_generator(
+        data_generator=get_data_generator_fn(random=False),
         save_base_dir=os.path.join(args.checkpoint_dir, f'{args.data_provider_id}'),
         metric=data_provider.metric,
         **fit_hyper_parameters,
     )
+    all_metric_list = [all_metric_dict[key] for key in all_metric_dict.keys()]
+    print('#' * 30)
+    print(f'full average metric')
+    print('#' * 30)
+    print(summarize_logs(all_metric_list))
+
+    if 'diagnosis' in data_provider.data_format:
+        print('#' * 30)
+        print('metric by class')
+        print('#' * 30)
+        data_generator = get_data_generator_fn(random=False)
+        metric_list_by_diagnosis = categorize_by_diagnosis(all_metric_dict, data_generator)
+        for key in metric_list_by_diagnosis.keys():
+            print(f'diagnosis: {key}, {summarize_logs(metric_list_by_diagnosis[key])}')
 
 
 if __name__ == '__main__':
