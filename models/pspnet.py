@@ -39,7 +39,7 @@ class PSPNet(PytorchModelBase):
         self.drop_2 = nn.Dropout2d(p=0.15)
 
     def forward_head(self, inp, data_idx: int):
-        x = inp['slice']
+        x = inp['image']
         x = get_tensor_from_array(x)
         x = self.heads[data_idx](x)
         return x

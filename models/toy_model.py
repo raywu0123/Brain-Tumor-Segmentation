@@ -24,10 +24,6 @@ class ToyModel(PytorchModelBase):
             forward_outcome_channels=num_units[0],
             **kwargs,
         )
-        self.image_chns = data_format['channels']
-        self.image_height = data_format['height']
-        self.image_width = data_format['width']
-        self.class_num = data_format['class_num']
 
         encoder_num_units = num_units
         self.encoder_convs = nn.ModuleList()
@@ -75,7 +71,7 @@ class ToyModel(PytorchModelBase):
             self.decoder_batchnorms.append(batchnorm)
 
     def forward_head(self, inp, data_idx: int):
-        inp = inp['slice']
+        inp = inp['image']
         x = normalize_batch_image(inp)
         x = get_tensor_from_array(x)
         return x

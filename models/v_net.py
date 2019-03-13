@@ -49,7 +49,8 @@ class VNet(PytorchModelBase):
         self.up.append(up_conv)
 
     def forward_head(self, inp, data_idx):
-        x = get_tensor_from_array(inp)
+        x = inp['volume']
+        x = get_tensor_from_array(x)
         if x.dim() != 5:
             raise AssertionError('input must have shape (batch_size, channel, D, H, W),\
                                  but get {}'.format(x.shape))

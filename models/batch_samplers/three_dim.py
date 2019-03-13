@@ -11,7 +11,7 @@ class ThreeDimBatchSampler(BatchSamplerBase):
         volume = batch_data['volume']
         label = batch_data['label']
 
-        feedable_data_list = [volume]
+        feedable_data_list = [{'volume': volume}]
         feedable_label_list = [label]
 
         return feedable_data_list, feedable_label_list

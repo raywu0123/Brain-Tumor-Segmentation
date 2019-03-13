@@ -62,7 +62,7 @@ class UNet(PytorchModelBase):
             self.up_layers.append(u)
 
     def forward_head(self, inp, data_idx):
-        inp, pos = inp['slice'], inp['position']
+        inp, pos = inp['image'], inp['position']
         x = normalize_batch_image(inp)
         x = get_tensor_from_array(x)
 
