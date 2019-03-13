@@ -27,7 +27,9 @@ class UniformPatch3DBatchSampler(BatchSamplerBase):
         for batch_indexes in batch_index_lists:
             batch_patch_volume, batch_patch_label = \
                 self._sample_by_batch_lists(batch_volume, batch_label, batch_indexes)
-            feedable_data_list.append(batch_patch_volume)
+            feedable_data_list.append({
+                'volume': batch_patch_volume,
+            })
             feedable_label_list.append(batch_patch_label)
 
         return feedable_data_list, feedable_label_list

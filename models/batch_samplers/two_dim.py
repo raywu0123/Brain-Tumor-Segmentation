@@ -25,7 +25,9 @@ class TwoDimBatchSampler(BatchSamplerBase):
         num_batch = ceil(len(two_dim_volume) / batch_size)
         for i_batch in range(num_batch):
             end_idx = min(len(two_dim_volume), (i_batch + 1) * batch_size)
-            feedable_data_list.append(two_dim_volume[i_batch * batch_size: end_idx])
+            feedable_data_list.append({
+                'image': two_dim_volume[i_batch * batch_size: end_idx]
+            })
             feedable_label_list.append(two_dim_label[i_batch * batch_size: end_idx])
 
         return feedable_data_list, feedable_label_list

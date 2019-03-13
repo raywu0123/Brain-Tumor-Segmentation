@@ -71,6 +71,8 @@ class ToyModel(PytorchModelBase):
             self.decoder_batchnorms.append(batchnorm)
 
     def forward(self, inp):
+        inp = inp['image']
+
         x = normalize_batch_image(inp)
         x = get_tensor_from_array(x)
         for conv, batchnorm in zip(self.encoder_convs, self.encoder_batchnorms):

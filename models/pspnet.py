@@ -50,6 +50,7 @@ class PSPNet(PytorchModelBase):
         # )
 
     def forward(self, x):
+        x = x['image']
         x = get_tensor_from_array(x)
 
         f, class_f = self.feats(x)

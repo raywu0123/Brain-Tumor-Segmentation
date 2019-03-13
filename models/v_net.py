@@ -52,6 +52,7 @@ class VNet(PytorchModelBase):
         self.output_layer = OutLayer(duplication_num, data_format['class_num'])
 
     def forward(self, x):
+        x = x['volume']
         x = get_tensor_from_array(x)
         if x.dim() != 5:
             raise AssertionError('input must have shape (batch_size, channel, D, H, W),\
