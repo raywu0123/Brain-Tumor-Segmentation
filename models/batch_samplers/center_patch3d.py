@@ -5,7 +5,7 @@ import numpy as np
 
 from .base import BatchSamplerBase
 from preprocess_tools.image_utils import crop_or_pad_to_shape
-from .utils import flatten
+from .utils import flatten, normalize_position
 
 
 class CenterPatch3DBatchSampler(BatchSamplerBase):
@@ -31,8 +31,11 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         for batch_indexes in index_lists:
             batch_patch_volume, batch_patch_label = \
                 self._sample_by_batch_lists(batch_volume, batch_label, batch_indexes)
+
+            position = normalize_position(batch_indexes, batch_label.shape)
             feedable_data_list.append({
-                'volume': batch_patch_volume
+                'volume': batch_patch_volume,
+                'position': position,
             })
             feedable_label_list.append(batch_patch_label)
 

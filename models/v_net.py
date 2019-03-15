@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -17,6 +18,7 @@ class VNet(PytorchModelBase):
             n_layer: int = 4,
             batch_sampler_id='three_dim',
             dropout_rate: float = 0.,
+            use_position: bool = False,
         ):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
@@ -26,6 +28,7 @@ class VNet(PytorchModelBase):
         # To work properly, kernel_size must be odd
         if kernel_size % 2 == 0:
             raise AssertionError('kernel_size({}) must be odd'.format(kernel_size))
+        self.use_position = use_position
 
         self.down = nn.ModuleList()
         self.up = nn.ModuleList()
@@ -47,13 +50,17 @@ class VNet(PytorchModelBase):
             self.up.append(up_conv)
 
         n_channel = (2 ** (n_layer - 1)) * duplication_num
-        up_conv = UpConv(n_channel * 2, n_channel, kernel_size, conv_time, dropout_rate)
+        in_channel = n_channel * 2
+        if self.use_position:
+            in_channel += 3
+        up_conv = UpConv(in_channel, n_channel, kernel_size, conv_time, dropout_rate)
         self.up.append(up_conv)
         self.output_layer = OutLayer(duplication_num, data_format['class_num'])
 
     def forward(self, x):
-        x = x['volume']
+        x, position = x['volume'], x['position']
         x = get_tensor_from_array(x)
+
         if x.dim() != 5:
             raise AssertionError('input must have shape (batch_size, channel, D, H, W),\
                                  but get {}'.format(x.shape))
@@ -66,6 +73,12 @@ class VNet(PytorchModelBase):
         for down_layer in self.down:
             x = down_layer(x)
             x_out.append(x)
+
+        if self.use_position:
+            position = get_tensor_from_array(position)
+            position = position.view(position.shape[0], position.shape[1], 1, 1, 1)
+            position = position.expand(-1, -1, x.shape[-3], x.shape[-2], x.shape[-1])
+            x = torch.cat([x, position], dim=1)
 
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up[::-1]):
