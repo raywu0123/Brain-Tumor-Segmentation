@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 
 from .base import PytorchModelBase
-from .loss_functions import weighted_cross_entropy_with_size_mismatch
 from .loss_functions import ce_minus_log_dice_with_size_mismatch
 from .utils import get_tensor_from_array
 
@@ -221,6 +220,8 @@ out = [N, c_out, 16, 16, 16]
 
 we want to predict array [N, c_out, d, h, w]
 """
+
+
 def get_patch(data, dim_in, dim_out):
     # first, we need to pad the array with size (dim_in - dim_out) / 2 arround
     # since our ouput will loss such pixels at each boundary
@@ -322,7 +323,6 @@ def reassemble(pred_list, data, dim_out):
 # -------- testing functions for prediction -------- #
 if __name__ == "__main__":
     from math import ceil
-    import numpy as np
     data = np.random.rand(1, 2, 200, 200, 200)
     patch_list = get_patch(data, 64, 32)
     pred_list = []
