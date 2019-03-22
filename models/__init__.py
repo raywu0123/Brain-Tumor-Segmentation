@@ -4,6 +4,7 @@ from .toy_model import ToyModel
 from .u_net import UNet
 from .v_net import VNet
 from .pspnet import PSPNet
+from .deepmedic import Deepmedic
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
@@ -119,6 +120,17 @@ ModelHub = {
         {
             **DEFAULT_TRAINING_PARAM,
             'batch_size': 10,
+        },
+    ),
+    'deepmedic': (
+        partial(
+            Deepmedic,
+            channel_list=[[1, 4], [4, 30], [30, 50], [50, 70], [70, 70], [70 * 2, 150]],
+            batch_sampler_id='center_patch3d',
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 20,
         },
     ),
 }
