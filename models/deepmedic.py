@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from math import ceil
 
 from .base import PytorchModelBase
 from .loss_functions import ce_minus_log_dice_with_size_mismatch
@@ -322,7 +323,6 @@ def reassemble(pred_list, data, dim_out):
 
 # -------- testing functions for prediction -------- #
 if __name__ == "__main__":
-    from math import ceil
     data = np.random.rand(1, 2, 200, 200, 200)
     patch_list = get_patch(data, 64, 32)
     pred_list = []
