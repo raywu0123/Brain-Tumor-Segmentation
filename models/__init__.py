@@ -125,6 +125,17 @@ ModelHub = {
             'batch_size': 15,
         },
     ),
+    'v_net_center_patch_positional': (
+        partial(
+            VNet,
+            batch_sampler_id='center_patch3d',
+            use_position=True,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 15,
+        },
+    ),
     'pspnet_2d_resnet34': (
         partial(
             PSPNet,
