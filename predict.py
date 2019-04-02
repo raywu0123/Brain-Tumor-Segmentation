@@ -34,7 +34,7 @@ def flow(
         data_generator=get_data_generator_fn(random=False),
         save_base_dir=os.path.join(args.checkpoint_dir, f'{args.data_provider_id}'),
         metric=data_provider.metric,
-        **args,
+        save_volume=args.save_volume,
         **fit_hyper_parameters,
     )
     all_metric_list = [all_metric_dict[key] for key in all_metric_dict.keys()]
