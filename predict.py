@@ -11,27 +11,15 @@ from trainers.pytorch_trainer import PytorchTrainer
 from models import ModelHub
 from models.utils import summarize_logs
 from data.data_providers import DataProviderHub
-from utils import parse_exp_id
+from utils import parse_exp_id, highlight_print
 
 load_dotenv('./.env')
-
-
-def categorize_by_diagnosis(all_metric_dict, data_generator) -> dict:
-    print(f'categorizing on {len(data_generator)} volumes...')
-    categorized_dict = {}
-    for _ in tqdm(range(len(data_generator))):
-        batch_data = data_generator(batch_size=1)
-        data_id = batch_data['data_ids'][0]
-        diagnosis = batch_data['diagnosis'][0]
-        if diagnosis not in categorized_dict:
-            categorized_dict[diagnosis] = []
-        categorized_dict[diagnosis].append(all_metric_dict[data_id])
-    return categorized_dict
 
 
 def flow(
         data_provider,
         trainer,
+        args,
         fit_hyper_parameters=None,
     ):
     if fit_hyper_parameters is None:
@@ -46,22 +34,32 @@ def flow(
         data_generator=get_data_generator_fn(random=False),
         save_base_dir=os.path.join(args.checkpoint_dir, f'{args.data_provider_id}'),
         metric=data_provider.metric,
+        **args,
         **fit_hyper_parameters,
     )
     all_metric_list = [all_metric_dict[key] for key in all_metric_dict.keys()]
-    print('#' * 30)
-    print(f'full average metric')
-    print('#' * 30)
+    highlight_print(f'full average metric')
     print(summarize_logs(all_metric_list))
 
     if 'diagnosis' in data_provider.data_format:
-        print('#' * 30)
-        print('metric by class')
-        print('#' * 30)
+        highlight_print('metric by class')
         data_generator = get_data_generator_fn(random=False)
         metric_list_by_diagnosis = categorize_by_diagnosis(all_metric_dict, data_generator)
         for key in metric_list_by_diagnosis.keys():
             print(f'diagnosis: {key}, {summarize_logs(metric_list_by_diagnosis[key])}')
+
+
+def categorize_by_diagnosis(all_metric_dict, data_generator) -> dict:
+    print(f'categorizing on {len(data_generator)} volumes...')
+    categorized_dict = {}
+    for _ in tqdm(range(len(data_generator))):
+        batch_data = data_generator(batch_size=1)
+        data_id = batch_data['data_ids'][0]
+        diagnosis = batch_data['diagnosis'][0]
+        if diagnosis not in categorized_dict:
+            categorized_dict[diagnosis] = []
+        categorized_dict[diagnosis].append(all_metric_dict[data_id])
+    return categorized_dict
 
 
 if __name__ == '__main__':
@@ -88,5 +86,6 @@ if __name__ == '__main__':
     flow(
         data_provider=data_provider,
         trainer=trainer,
+        args=args,
         fit_hyper_parameters=fit_hyper_parameters,
     )

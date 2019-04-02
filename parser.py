@@ -53,5 +53,12 @@ def brain_tumor_argparse():
         help='Choose to predict on full dataset or only 1/10, [full/test]',
         default='test',
     )
+    parser.add_argument(
+        '--save_volume',
+        dest='save_volume',
+        action='store_true',
+        help='Runs faster if not saving volumes.',
+    )
     parser.set_defaults(do_comet=False)
+    parser.set_defaults(save_volume=False)
     return parser

@@ -92,15 +92,18 @@ class PytorchTrainer(TrainerBase, ABC):
                         metrics, prefix='validation', step=self.i_epoch
                     )
 
-    def predict_on_generator(self, data_generator, save_base_dir, metric, **kwargs):
+    def predict_on_generator(self, data_generator, save_base_dir, metric, save_volume, **kwargs):
         prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
         hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
+
         if not os.path.exists(save_base_dir):
             os.mkdir(save_base_dir)
-        if not os.path.exists(prob_prediction_path):
-            os.mkdir(prob_prediction_path)
-        if not os.path.exists(hard_prediction_path):
-            os.mkdir(hard_prediction_path)
+
+        if save_volume:
+            if not os.path.exists(prob_prediction_path):
+                os.mkdir(prob_prediction_path)
+            if not os.path.exists(hard_prediction_path):
+                os.mkdir(hard_prediction_path)
 
         metrics_dict = {}
 
@@ -120,7 +123,8 @@ class PytorchTrainer(TrainerBase, ABC):
             data_id = batch_data['data_ids'][0]
             affine = batch_data['affines'][0]
 
-            save_array_to_nii(pred, os.path.join(prob_prediction_path, data_id), affine)
-            save_array_to_nii(hard_pred, os.path.join(hard_prediction_path, data_id), affine)
+            if save_volume:
+                save_array_to_nii(pred, os.path.join(prob_prediction_path, data_id), affine)
+                save_array_to_nii(hard_pred, os.path.join(hard_prediction_path, data_id), affine)
 
         return metrics_dict
