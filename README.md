@@ -15,37 +15,26 @@ cp .env.example .env
 
 ### 3. Run Exp. with Command Line
 
-Run with data-generator (recommended)
 ```
-python main.py -m <model_id> -d <data_provider_id> -ug
+python main.py -m <model_id> -d <data_provider_id> [--comet]
 ```
 
 * Please refer to `models/__init__.py` for available model_ids,
 and `data/data_providers.py` for available data_provider_ids.  
 * For other arguments, please refer to `parser.py`
+* Passing the `--comet` argument alows user to log results to comet.ml, 
+you'll have to add your api-key to the `.env` file
 
-### 4. Resume from Checkpoint
+### 4. Resume Training from Checkpoint
 
 ```
-python main.py --checkpoint_dir <checkpoint_dir> -ug
+python main.py --checkpoint_dir <checkpoint_dir>
 ``` 
 
-### 5. Syntax Linting
-```
-python -m flake8 .
-```
+## 5. Prediction
 
-### 6. Run Tests
 ```
-python -m unittest
-```
-
-### 7. Logging Results to Comet
-
-a. Add your comet api-key to `.env` and restart your virtual environment.  
-b. 
-``` 
-python main.py -m <model_id> -d <data_provider_id> -ug --comet
+python main.py --checkpoint_dir <checkpoint_dir> [--predict_mode] [--save_volume]
 ```
 
 ## Data Configuration
