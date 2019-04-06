@@ -23,6 +23,7 @@ augmentor = "*"
 albumentations = "*"
 simpleitk = "*"
 torchvision = "*"
+pandas = "*"
 
 [dev-packages]
 

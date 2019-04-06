@@ -3,6 +3,16 @@ import argparse
 
 def brain_tumor_argparse():
     parser = argparse.ArgumentParser(description='Brain Tumor Segmentation Experiment')
+
+    general_args_group = parser.add_argument_group('General Arguments')
+    add_general_args(general_args_group)
+
+    prediction_args_group = parser.add_argument_group('Prediction Arguments')
+    add_prediction_args(prediction_args_group)
+    return parser
+
+
+def add_general_args(parser):
     parser.add_argument(
         '-m',
         '--model_id',
@@ -42,6 +52,10 @@ def brain_tumor_argparse():
         help='comet ml workspace name',
         default='raywu0123',
     )
+    parser.set_defaults(save_volume=False)
+
+
+def add_prediction_args(parser):
     parser.add_argument(
         '--checkpoint_dir',
         type=str,
@@ -53,5 +67,10 @@ def brain_tumor_argparse():
         help='Choose to predict on full dataset or only 1/10, [full/test]',
         default='test',
     )
+    parser.add_argument(
+        '--save_volume',
+        dest='save_volume',
+        action='store_true',
+        help='Runs faster if not saving volumes.',
+    )
     parser.set_defaults(do_comet=False)
-    return parser

@@ -6,6 +6,7 @@ import torch
 from dotenv import load_dotenv
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 
 from .base import TrainerBase
@@ -39,6 +40,8 @@ class PytorchTrainer(TrainerBase, ABC):
         self.i_epoch = 0
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
+        self.prob_prediction_path = None
+        self.hard_prediction_path = None
 
     def count_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -92,15 +95,18 @@ class PytorchTrainer(TrainerBase, ABC):
                         metrics, prefix='validation', step=self.i_epoch
                     )
 
-    def predict_on_generator(self, data_generator, save_base_dir, metric, **kwargs):
-        prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
-        hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
+    def predict_on_generator(self, data_generator, save_base_dir, metric, save_volume, **kwargs):
+        self.prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
+        self.hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
+
         if not os.path.exists(save_base_dir):
             os.mkdir(save_base_dir)
-        if not os.path.exists(prob_prediction_path):
-            os.mkdir(prob_prediction_path)
-        if not os.path.exists(hard_prediction_path):
-            os.mkdir(hard_prediction_path)
+
+        if save_volume:
+            if not os.path.exists(self.prob_prediction_path):
+                os.mkdir(self.prob_prediction_path)
+            if not os.path.exists(self.hard_prediction_path):
+                os.mkdir(self.hard_prediction_path)
 
         metrics_dict = {}
 
@@ -113,14 +119,26 @@ class PytorchTrainer(TrainerBase, ABC):
             metrics = metric(pred, label).all_metrics(verbose=False)
             metrics_dict[data_id] = metrics
 
-            # to [D, H, W, C] format
-            pred = pred[0].transpose([2, 3, 1, 0])
-            hard_pred = np.argmax(pred, axis=-1)
+            if save_volume:
+                self._save_volume_prediction(pred, batch_data)
 
-            data_id = batch_data['data_ids'][0]
-            affine = batch_data['affines'][0]
-
-            save_array_to_nii(pred, os.path.join(prob_prediction_path, data_id), affine)
-            save_array_to_nii(hard_pred, os.path.join(hard_prediction_path, data_id), affine)
-
+        self._save_metric_predictions(metrics_dict, save_base_dir)
+        print(f'prediction result saved to {save_base_dir}')
         return metrics_dict
+
+    def _save_volume_prediction(self, pred, batch_data):
+        # to [D, H, W, C] format
+        pred = pred[0].transpose([2, 3, 1, 0])
+        hard_pred = np.argmax(pred, axis=-1)
+
+        data_id = batch_data['data_ids'][0]
+        affine = batch_data['affines'][0]
+
+        save_array_to_nii(pred, os.path.join(self.prob_prediction_path, data_id), affine)
+        save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
+
+    def _save_metric_predictions(self, metrics_dict, save_base_dir):
+        df = pd.DataFrame(metrics_dict).transpose()
+        df = df.sort_index()
+        output_file_path = os.path.join(save_base_dir, 'results.csv')
+        df.to_csv(output_file_path)

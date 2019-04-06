@@ -7,6 +7,12 @@ from data.utils import to_one_hot_label
 epsilon = 1e-8
 
 
+def highlight_print(msg, highlight_len=30):
+    print('#' * highlight_len)
+    print(msg)
+    print('#' * highlight_len)
+
+
 def get_2d_from_3d(batch_volume):
     assert (batch_volume.ndim == 5)
     batch_volume = np.transpose(batch_volume, (0, 2, 1, 3, 4))
