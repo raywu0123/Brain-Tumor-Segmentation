@@ -28,14 +28,13 @@ class PytorchTrainer(TrainerBase, ABC):
         self.comet_experiment = comet_experiment
 
         self.model = model
+        if torch.cuda.is_available():
+            self.model.cuda()
         print(f'Total parameters: {self.count_parameters()}')
         self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
 
         if checkpoint_dir is not None:
             self.load(checkpoint_dir)
-
-        if torch.cuda.is_available():
-            self.model.cuda()
 
         self.i_epoch = 0
         EXP_ID = os.environ.get('EXP_ID')
