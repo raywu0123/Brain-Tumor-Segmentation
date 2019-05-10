@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -85,7 +86,7 @@ class DownConv(nn.Module):
     def __init__(self, input_channel, kernel_size, conv_time, dropout_rate):
         super(DownConv, self).__init__()
         output_channel = input_channel * 2
-        self.down_conv = nn.Conv3d(input_channel, output_channel, kernel_size=kernel_size, stride=2)
+        self.down_conv = CoordConv3d(input_channel, output_channel, kernel_size=kernel_size, stride=2)
         self.dropout = nn.Dropout3d(p=dropout_rate)
         self.batch_norm = nn.BatchNorm3d(output_channel)
         self.conv_N_time = ConvNTimes(output_channel, kernel_size, conv_time, dropout_rate)
@@ -154,7 +155,7 @@ class ConvNTimes(nn.Module):
         self.dropout = nn.Dropout3d(p=dropout_rate)
 
         for _ in range(N):
-            conv = nn.Conv3d(
+            conv = CoordConv3d(
                 channel_num,
                 channel_num,
                 kernel_size=kernel_size,
@@ -183,7 +184,7 @@ class Duplicate(nn.Module):
 
     def __init__(self, input_channel, duplication_num, kernel_size, dropout_rate):
         super(Duplicate, self).__init__()
-        self.duplicate = nn.Conv3d(
+        self.duplicate = CoordConv3d(
             input_channel,
             duplication_num,
             kernel_size=kernel_size,
@@ -210,8 +211,55 @@ class OutLayer(nn.Module):
 
     def __init__(self, input_channel, class_num):
         super(OutLayer, self).__init__()
-        self.conv = nn.Conv3d(input_channel, class_num, kernel_size=1)
+        self.conv = CoordConv3d(input_channel, class_num, kernel_size=1)
 
     def forward(self, x):
         x = self.conv(x)
         return x
+
+
+class CoordConv3d(nn.Module):
+
+    def __init__(self, in_channels, out_channels, **kwargs):
+        super().__init__()
+        in_size = in_channels + 3
+        self.conv = nn.Conv3d(in_size, out_channels, **kwargs)
+
+    def forward(self, x):
+        ret = self._addcoords(x)
+        ret = self.conv(ret)
+        return ret
+
+    @staticmethod
+    def _addcoords(input_tensor):
+        """
+        Args:
+            input_tensor: shape(batch, channel, x_dim, y_dim, z_dim)
+        """
+        batch_size, _, x_dim, y_dim, z_dim = input_tensor.size()
+
+        xx_channel = torch.arange(x_dim).repeat(1, z_dim, y_dim, 1)
+        yy_channel = torch.arange(y_dim).repeat(1, x_dim, z_dim, 1)
+        zz_channel = torch.arange(z_dim).repeat(1, x_dim, y_dim, 1)
+
+        xx_channel = xx_channel.float() / (x_dim - 1)
+        yy_channel = yy_channel.float() / (y_dim - 1)
+        zz_channel = zz_channel.float() / (z_dim - 1)
+
+        xx_channel = xx_channel * 2 - 1
+        yy_channel = yy_channel * 2 - 1
+        zz_channel = zz_channel * 2 - 1
+
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1, 1).transpose(2, 4)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1, 1).transpose(3, 4)
+        zz_channel = zz_channel.repeat(batch_size, 1, 1, 1, 1)
+        ret = torch.cat(
+            (
+                input_tensor,
+                xx_channel.type_as(input_tensor),
+                yy_channel.type_as(input_tensor),
+                zz_channel.type_as(input_tensor),
+            ),
+            dim=1
+        )
+        return ret
