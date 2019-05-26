@@ -86,16 +86,22 @@ class DownConv(nn.Module):
     def __init__(self, input_channel, kernel_size, conv_time, dropout_rate):
         super(DownConv, self).__init__()
         output_channel = input_channel * 2
-        self.down_conv = CoordConv3d(input_channel, output_channel, kernel_size=kernel_size, stride=2)
+        self.down_conv = CoordConv3d(
+            nn.Conv3d,
+            input_channel,
+            output_channel,
+            kernel_size=kernel_size,
+            stride=2
+        )
         self.dropout = nn.Dropout3d(p=dropout_rate)
-        self.batch_norm = nn.BatchNorm3d(output_channel)
+#         self.batch_norm = nn.BatchNorm3d(output_channel)
         self.conv_N_time = ConvNTimes(output_channel, kernel_size, conv_time, dropout_rate)
 
     def forward(self, x):
         x = self.down_conv(x)
         x = self.dropout(x)
-        if self.dropout.p == 0:
-            x = self.batch_norm(x)
+#         if self.dropout.p == 0:
+#             x = self.batch_norm(x)
         x = F.relu(x)
         x = self.conv_N_time(x)
         return x
@@ -111,17 +117,22 @@ class UpConv(nn.Module):
 
     def __init__(self, x1_channel, x2_channel, kernel_size, conv_time, dropout_rate):
         super(UpConv, self).__init__()
-        self.up_conv = nn.ConvTranspose3d(x1_channel, x2_channel, kernel_size=kernel_size, stride=2)
+        self.up_conv = nn.ConvTranspose3d(
+            x1_channel,
+            x2_channel,
+            kernel_size=kernel_size,
+            stride=2,
+        )
         self.dropout = nn.Dropout3d(p=dropout_rate)
-        self.batch_norm = nn.BatchNorm3d(x2_channel)
+#         self.batch_norm = nn.BatchNorm3d(x2_channel)
         self.conv_N_time = ConvNTimes(x2_channel, kernel_size, conv_time, dropout_rate)
 
     def forward(self, x1, x2):
         x1 = self.up_conv(x1)
 
-        x1 = self.dropout(x1)
-        if self.dropout.p == 0:
-            x1 = self.batch_norm(x1)
+#         x1 = self.dropout(x1)
+#         if self.dropout.p == 0:
+#             x1 = self.batch_norm(x1)
 
         x1 = F.relu(x1)
         if x1.shape != x2.shape:
@@ -151,26 +162,28 @@ class ConvNTimes(nn.Module):
         super(ConvNTimes, self).__init__()
 
         self.convs = nn.ModuleList()
-        self.batchnorms = nn.ModuleList()
+#         self.batchnorms = nn.ModuleList()
         self.dropout = nn.Dropout3d(p=dropout_rate)
 
         for _ in range(N):
             conv = CoordConv3d(
+                nn.Conv3d,
                 channel_num,
                 channel_num,
                 kernel_size=kernel_size,
                 padding=kernel_size // 2,
             )
             self.convs.append(conv)
-            norm = nn.BatchNorm3d(channel_num)
-            self.batchnorms.append(norm)
+#             norm = nn.BatchNorm3d(channel_num)
+#             self.batchnorms.append(norm)
 
     def forward(self, x):
-        for conv, batchnorm in zip(self.convs, self.batchnorms):
+#         for conv, batchnorm in zip(self.convs, self.batchnorms):
+        for conv in self.convs:
             x = conv(x)
-            x = self.dropout(x)
-            if self.dropout.p == 0:
-                x = batchnorm(x)
+#             x = self.dropout(x)
+#             if self.dropout.p == 0:
+#                 x = batchnorm(x)
             x = F.relu(x)
         return x
 
@@ -185,19 +198,20 @@ class Duplicate(nn.Module):
     def __init__(self, input_channel, duplication_num, kernel_size, dropout_rate):
         super(Duplicate, self).__init__()
         self.duplicate = CoordConv3d(
+            nn.Conv3d,
             input_channel,
             duplication_num,
             kernel_size=kernel_size,
             padding=kernel_size // 2,
         )
         self.dropout = nn.Dropout3d(p=dropout_rate)
-        self.batch_norm = nn.BatchNorm3d(duplication_num)
+#         self.batch_norm = nn.BatchNorm3d(duplication_num)
 
     def forward(self, inp):
         x = self.duplicate(inp)
-        x = self.dropout(x)
-        if self.dropout.p == 0:
-            x = self.batch_norm(x)
+#         x = self.dropout(x)
+#         if self.dropout.p == 0:
+#             x = self.batch_norm(x)
         x = F.relu(x)
         return x
 
@@ -211,7 +225,7 @@ class OutLayer(nn.Module):
 
     def __init__(self, input_channel, class_num):
         super(OutLayer, self).__init__()
-        self.conv = CoordConv3d(input_channel, class_num, kernel_size=1)
+        self.conv = CoordConv3d(nn.Conv3d, input_channel, class_num, kernel_size=1)
 
     def forward(self, x):
         x = self.conv(x)
@@ -220,10 +234,10 @@ class OutLayer(nn.Module):
 
 class CoordConv3d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, **kwargs):
+    def __init__(self, original_fn, in_channels, out_channels, **kwargs):
         super().__init__()
         in_size = in_channels + 3
-        self.conv = nn.Conv3d(in_size, out_channels, **kwargs)
+        self.conv = original_fn(in_size, out_channels, **kwargs)
 
     def forward(self, x):
         ret = self._addcoords(x)
