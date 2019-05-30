@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 from .base import DataGeneratorBase
-from .augmentations.volume_augmentation import DepthwiseVolumeAugmentor
+from .augmentations.volume_augmentation import VolumeAugmentor
 
 
 class AsyncDataGeneratorWrapper(DataGeneratorBase):
@@ -51,7 +51,7 @@ class AugmentedDataGeneratorWrapper(DataGeneratorBase):
 
     def __init__(self, data_generator: DataGeneratorBase):
         self.data_generator = data_generator
-        self.augmentor = DepthwiseVolumeAugmentor(data_generator.data_format)
+        self.augmentor = VolumeAugmentor(data_generator.data_format)
         self._data_format = data_generator.data_format
 
     def __len__(self):
