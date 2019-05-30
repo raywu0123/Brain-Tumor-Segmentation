@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy as np
+from bistiming import SimpleTimer
 
 from ..volume_augmentation import VolumeAugmentor
 
@@ -8,13 +9,13 @@ class AugmentationTestCase(TestCase):
 
     def setUp(self):
         data_format = {
-            'channels': 3,
-            'depth': 4,
-            'height': 5,
-            'width': 6,
+            'channels': 1,
+            'depth': 200,
+            'height': 199,
+            'width': 198,
         }
         data_shape = [
-            2,
+            1,
             data_format['channels'],
             data_format['depth'],
             data_format['height'],
@@ -35,8 +36,10 @@ class AugmentationTestCase(TestCase):
         self.assertAlmostEqual(np.sum(transformed_volume - self.volume), 0.)
 
     def test_nontrivial_transform(self):
-        transformed_volume, transformed_label = self.nontrivial_augmentor.co_transform(
-            volume=self.volume, label=self.label
-        )
-        self.assertEqual(np.all(transformed_volume.shape == self.volume.shape), True)
-        self.assertEqual(np.all(transformed_label.shape == self.label.shape), True)
+        for _ in range(10):
+            with SimpleTimer('nontrivial transform'):
+                transformed_volume, transformed_label = self.nontrivial_augmentor.co_transform(
+                    volume=self.volume, label=self.label
+                )
+            self.assertEqual(np.all(transformed_volume.shape == self.volume.shape), True)
+            self.assertEqual(np.all(transformed_label.shape == self.label.shape), True)

@@ -3,7 +3,8 @@ from albumentations import (
     Compose,
     ShiftScaleRotate,
     Flip,
-    ElasticTransform,
+    # ElasticTransform,
+    # RandomBrightnessContrast,
 )
 
 from .base import AugmentorBase
@@ -67,7 +68,8 @@ class ImageAugmentor(AugmentorBase):
         return Compose([
             ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20),
             Flip(),
-            ElasticTransform(alpha=720, sigma=24),
+            # ElasticTransform(alpha=720, sigma=24, approximate=False),
+            # RandomBrightnessContrast(),
         ])
 
     @staticmethod
