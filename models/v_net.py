@@ -3,7 +3,10 @@ import torch.nn.functional as F
 
 from .base import PytorchModelBase
 from .loss_functions import ce_minus_log_dice
-from .utils import get_tensor_from_array
+from .utils import get_tensor_from_array, SelfAttention3D
+
+conv_layer = nn.Conv3d
+deconv_layer = nn.ConvTranspose3d
 
 
 class VNet(PytorchModelBase):
@@ -85,7 +88,7 @@ class DownConv(nn.Module):
     def __init__(self, input_channel, kernel_size, conv_time, dropout_rate):
         super(DownConv, self).__init__()
         output_channel = input_channel * 2
-        self.down_conv = nn.Conv3d(input_channel, output_channel, kernel_size=kernel_size, stride=2)
+        self.down_conv = conv_layer(input_channel, output_channel, kernel_size=kernel_size, stride=2)
         self.dropout = nn.Dropout3d(p=dropout_rate)
         self.batch_norm = nn.BatchNorm3d(output_channel)
         self.conv_N_time = ConvNTimes(output_channel, kernel_size, conv_time, dropout_rate)
@@ -110,7 +113,7 @@ class UpConv(nn.Module):
 
     def __init__(self, x1_channel, x2_channel, kernel_size, conv_time, dropout_rate):
         super(UpConv, self).__init__()
-        self.up_conv = nn.ConvTranspose3d(x1_channel, x2_channel, kernel_size=kernel_size, stride=2)
+        self.up_conv = deconv_layer(x1_channel, x2_channel, kernel_size=kernel_size, stride=2)
         self.dropout = nn.Dropout3d(p=dropout_rate)
         self.batch_norm = nn.BatchNorm3d(x2_channel)
         self.conv_N_time = ConvNTimes(x2_channel, kernel_size, conv_time, dropout_rate)
@@ -154,7 +157,7 @@ class ConvNTimes(nn.Module):
         self.dropout = nn.Dropout3d(p=dropout_rate)
 
         for _ in range(N):
-            conv = nn.Conv3d(
+            conv = conv_layer(
                 channel_num,
                 channel_num,
                 kernel_size=kernel_size,
@@ -183,7 +186,7 @@ class Duplicate(nn.Module):
 
     def __init__(self, input_channel, duplication_num, kernel_size, dropout_rate):
         super(Duplicate, self).__init__()
-        self.duplicate = nn.Conv3d(
+        self.duplicate = conv_layer(
             input_channel,
             duplication_num,
             kernel_size=kernel_size,
@@ -210,7 +213,7 @@ class OutLayer(nn.Module):
 
     def __init__(self, input_channel, class_num):
         super(OutLayer, self).__init__()
-        self.conv = nn.Conv3d(input_channel, class_num, kernel_size=1)
+        self.conv = conv_layer(input_channel, class_num, kernel_size=1)
 
     def forward(self, x):
         x = self.conv(x)
