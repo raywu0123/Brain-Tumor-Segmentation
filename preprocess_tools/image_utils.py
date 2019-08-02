@@ -7,6 +7,8 @@ import os
 
 def save_array_to_nii(np_array, save_path, affine=None):
     empty_header = nib.Nifti1Header()
+    if affine is None:
+        affine = np.diag([1, 2, 3, 1])
     new_nii = nib.Nifti1Image(np_array, affine, empty_header)
     nib.save(new_nii, save_path)
 
