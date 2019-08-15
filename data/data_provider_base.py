@@ -28,7 +28,7 @@ class DataProviderBase(ABC):
     def get_training_data_generator(self, **kwargs):
         return self._get_data_generator(self.train_ids, **kwargs)
 
-    def _get_data_generator(self, data_ids, augmentation, async_load=True, **kwargs):
+    def _get_data_generator(self, data_ids, augmentation=False, async_load=False, **kwargs):
         data_generator = self._get_raw_data_generator(data_ids, **kwargs)
         data_generator = NormalizedDataGeneratorWrapper(data_generator)
         if augmentation:

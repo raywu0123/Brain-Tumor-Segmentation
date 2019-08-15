@@ -75,6 +75,7 @@ def main():
         model=model,
         comet_experiment=experiment,
         checkpoint_dir=args.checkpoint_dir,
+        profile=args.profile,
     )
     flow(
         data_provider=data_provider,
