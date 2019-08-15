@@ -125,7 +125,9 @@ class StructSegGenerator(DataGeneratorBase):
         ))
         affines = []
         for idx, data_id in enumerate(data_ids):
-            batch_volume[idx], batch_label[idx], affine = self._get_image_and_label(data_id)
+            volume, label, affine = self._get_image_and_label(data_id)
+            batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']],
+            batch_label[idx, :, :len(volume)] = label[:, :self.data_format['depth']]
             affines.append(affine)
 
         return {
@@ -150,19 +152,4 @@ class StructSegGenerator(DataGeneratorBase):
             label = to_one_hot_label(label, self.data_format['class_num'])
         else:
             label = None
-
-        if self.data_format['depth'] > image.shape[0]:
-            diff = self.data_format['depth'] - image.shape[0]
-            image = np.pad(
-                image,
-                ((0, diff), (0, 0), (0, 0)),
-                mode="constant",
-                constant_values=0,
-            )
-            label = np.pad(
-                label,
-                ((0, 0), (0, diff), (0, 0), (0, 0)),
-                mode="constant",
-                constant_values=0,
-            )
         return image, label, affine
