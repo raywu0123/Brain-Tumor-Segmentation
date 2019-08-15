@@ -22,7 +22,7 @@ python main.py -m <model_id> -d <data_provider_id> [--comet]
 * Please refer to `models/__init__.py` for available model_ids,
 and `data/data_providers.py` for available data_provider_ids.  
 * For other arguments, please refer to `parser.py`
-* Passing the `--comet` argument alows user to log results to comet.ml, 
+* Passing the `--comet` argument allows the user to log results to comet.ml, 
 you'll have to add your api-key to the `.env` file
 
 ### 4. Resume Training from Checkpoint

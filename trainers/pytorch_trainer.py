@@ -74,12 +74,10 @@ class PytorchTrainer(TrainerBase, ABC):
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
         verbose_epoch_num = kwargs['verbose_epoch_num']
-
         for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
             log_dict = self.model.fit_generator(
                 training_data_generator, self.opt, batch_size=batch_size
             )
-
             if self.i_epoch % verbose_epoch_num == 0:
                 print(f'epoch: {self.i_epoch}', log_dict)
                 self.save()
