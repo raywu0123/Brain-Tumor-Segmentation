@@ -37,13 +37,14 @@ def flow(
         data_provider,
         trainer,
         fit_hyper_parameters=None,
+        **kwargs,
     ):
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
     trainer.fit_generator(
-        training_data_generator=data_provider.get_training_data_generator(),
-        validation_data_generator=data_provider.get_testing_data_generator(),
+        training_data_generator=data_provider.get_training_data_generator(**kwargs),
+        validation_data_generator=data_provider.get_testing_data_generator(**kwargs),
         metric=data_provider.metric,
         **fit_hyper_parameters,
     )
@@ -68,20 +69,18 @@ def main():
     data_provider_hub = DataProviderHub()
     get_data_provider, data_provider_parameters = data_provider_hub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
-
     get_model, fit_hyper_parameters = ModelHub[args.model_id]
     model = get_model(data_provider.data_format)
-
     trainer = PytorchTrainer(
         model=model,
         comet_experiment=experiment,
         checkpoint_dir=args.checkpoint_dir,
     )
-
     flow(
         data_provider=data_provider,
         trainer=trainer,
         fit_hyper_parameters=fit_hyper_parameters,
+        **vars(args),
     )
 
 

@@ -52,6 +52,20 @@ def add_general_args(parser):
         help='comet ml workspace name',
         default='raywu0123',
     )
+    parser.add_argument(
+        '-aug',
+        '--augmentation',
+        type=bool,
+        help='if True, activate data augmentation while training',
+    )
+    parser.add_argument(
+        '-async'
+        '--async_load',
+        type=bool,
+        help='if True, use multiple processes to load data'
+    )
+    parser.set_defaults(augmentation=False)
+    parser.set_defaults(async_load=False)
     parser.set_defaults(save_volume=False)
 
 
