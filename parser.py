@@ -55,18 +55,27 @@ def add_general_args(parser):
     parser.add_argument(
         '-aug',
         '--augmentation',
-        type=bool,
+        dest='augmentation',
+        action='store_true',
         help='if True, activate data augmentation while training',
     )
     parser.add_argument(
         '-async'
         '--async_load',
-        type=bool,
-        help='if True, use multiple processes to load data'
+        dest='async_load',
+        action='store_true',
+        help='if True, use multiple processes to load data',
     )
+    parser.add_argument(
+        '--profile',
+        dest='profile',
+        action='store_true',
+        help='if True, activate the profiler and dump the log'
+    )
+    parser.set_defaults(do_comet=False)
     parser.set_defaults(augmentation=False)
     parser.set_defaults(async_load=False)
-    parser.set_defaults(save_volume=False)
+    parser.set_defaults(profile=False)
 
 
 def add_prediction_args(parser):
@@ -87,4 +96,4 @@ def add_prediction_args(parser):
         action='store_true',
         help='Runs faster if not saving volumes.',
     )
-    parser.set_defaults(do_comet=False)
+    parser.set_defaults(save_volume=False)

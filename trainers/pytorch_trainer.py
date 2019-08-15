@@ -1,5 +1,8 @@
 from abc import ABC
 import os
+import cProfile
+from contextlib import redirect_stdout
+import sys
 
 import comet_ml
 import torch
@@ -24,7 +27,18 @@ class PytorchTrainer(TrainerBase, ABC):
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
             lr: float = 1e-4,
+            profile: bool = False,
+            profile_epochs: int = 10,
     ):
+        EXP_ID = os.environ.get('EXP_ID')
+        self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
+        self.prob_prediction_path = None
+        self.hard_prediction_path = None
+
+        self.profile = cProfile.Profile(subcalls=False) if profile else None
+        self.profile_epochs = profile_epochs
+        self.profile_export_file_path = os.path.join(self.result_path, 'profile.stat')
+
         self.comet_experiment = comet_experiment
 
         self.model = model
@@ -37,10 +51,6 @@ class PytorchTrainer(TrainerBase, ABC):
             self.load(checkpoint_dir)
 
         self.i_epoch = 0
-        EXP_ID = os.environ.get('EXP_ID')
-        self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
-        self.prob_prediction_path = None
-        self.hard_prediction_path = None
 
     def count_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -74,6 +84,11 @@ class PytorchTrainer(TrainerBase, ABC):
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
         verbose_epoch_num = kwargs['verbose_epoch_num']
+
+        if self.profile is not None:
+            print('Profiling...')
+            self.profile.enable()
+
         for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
             log_dict = self.model.fit_generator(
                 training_data_generator, self.opt, batch_size=batch_size
@@ -91,6 +106,16 @@ class PytorchTrainer(TrainerBase, ABC):
                     self.comet_experiment.log_metrics(
                         metrics, prefix='validation', step=self.i_epoch
                     )
+
+            if self.i_epoch == self.profile_epochs and self.profile is not None:
+                self.profile.disable()
+                with open(self.profile_export_file_path, 'w') as f_out:
+                    with redirect_stdout(f_out):
+                        self.profile.print_stats(sort='cumtime')
+                print(f"Complete profiling in {self.profile_epochs} epochs.")
+                print(f'Exported profiling stats to {self.profile_export_file_path}')
+                print("Exit by profiler")
+                sys.exit(0)
 
     def predict_on_generator(self, data_generator, save_base_dir, metric, save_volume, **kwargs):
         self.prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
@@ -134,6 +159,7 @@ class PytorchTrainer(TrainerBase, ABC):
         save_array_to_nii(pred, os.path.join(self.prob_prediction_path, data_id), affine)
         save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
 
+    @staticmethod
     def _save_metric_predictions(self, metrics_dict, save_base_dir):
         df = pd.DataFrame(metrics_dict).transpose()
         df = df.sort_index()
