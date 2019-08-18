@@ -30,3 +30,16 @@ class DataGeneratorBase(ABC):
     @property
     def data_format(self):
         return self._data_format
+
+
+class DataGeneratorWrapperBase:
+
+    def __init__(self, data_generator):
+        self.data_generator = data_generator
+
+    def __len__(self):
+        print(len(self.data_generator))
+
+    @property
+    def data_format(self):
+        return self.data_generator.data_format
