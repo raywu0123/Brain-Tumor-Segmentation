@@ -7,6 +7,9 @@ def brain_tumor_argparse():
     general_args_group = parser.add_argument_group('General Arguments')
     add_general_args(general_args_group)
 
+    optimizing_args_group = parser.add_argument_group('Optimizing Arguments')
+    add_optimizing_args(optimizing_args_group)
+
     prediction_args_group = parser.add_argument_group('Prediction Arguments')
     add_prediction_args(prediction_args_group)
     return parser
@@ -83,6 +86,35 @@ def add_general_args(parser):
     parser.set_defaults(async_load=False)
     parser.set_defaults(profile=False)
     parser.set_defaults(preload=False)
+
+
+def add_optimizing_args(parser):
+    parser.add_argument(
+        '-lr',
+        '--learning_rate',
+        type=float,
+        default=1e-4,
+    )
+    parser.add_argument(
+        '-ot',
+        '--optimizer_type',
+        type=str,
+        default='adam',
+    )
+    parser.add_argument(
+        '-mil',
+        '--milestones',
+        type=int,
+        nargs='+',
+        defualt=[50, 70],
+        help='learning rate scheduler milestone, unit: epoch'
+    )
+    parser.add_argument(
+        '--gamma',
+        type=float,
+        default=0.1,
+        help='learning rate scheduler decay rate'
+    )
 
 
 def add_prediction_args(parser):

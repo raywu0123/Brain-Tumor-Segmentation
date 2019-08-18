@@ -27,9 +27,12 @@ class PytorchTrainer(TrainerBase, ABC):
             dataset_size: int,
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
+            optimizer_type: str = 'adam',
             lr: float = 1e-4,
+            epoch_milestones=(50, 70),
+            gamma=0.1,
             profile: bool = False,
-            profile_epochs: int = 10,
+            profile_epochs: int = 1,
     ):
         self.dataset_size = dataset_size
 
@@ -51,10 +54,16 @@ class PytorchTrainer(TrainerBase, ABC):
         print(f'Total parameters: {self.count_parameters()}')
         self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
 
+        self.step_milestones = [n_epoch * dataset_size for n_epoch in epoch_milestones]
+        self.lr_schedule = torch.optim.lr_scheduler.MultiStepLR(
+            self.opt,
+            milestones=self.step_milestones,
+            gamma=gamma,
+        )
         if checkpoint_dir is not None:
             self.load(checkpoint_dir)
 
-        self.i_epoch = 0
+        self.i_step = 0
 
     def count_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -62,7 +71,7 @@ class PytorchTrainer(TrainerBase, ABC):
     def save(self):
         torch.save(
             {
-                'epoch': self.i_epoch,
+                'step': self.i_step,
                 'state_dict': self.model.state_dict(),
                 'optimizer': self.opt.state_dict(),
             },
@@ -74,7 +83,7 @@ class PytorchTrainer(TrainerBase, ABC):
         checkpoint = torch.load(os.path.join(file_path, 'checkpoint.pth.tar'))
         self.model.load_state_dict(checkpoint['state_dict'])
         self.opt.load_state_dict(checkpoint['optimizer'])
-        self.i_epoch = checkpoint['epoch'] + 1
+        self.i_step = checkpoint['step'] + 1
         print(f'model loaded from {file_path}')
 
     def _validate(self, validation_data_generator, metric, **kwargs):
@@ -169,7 +178,7 @@ class PytorchTrainer(TrainerBase, ABC):
         save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
 
     @staticmethod
-    def _save_metric_predictions(self, metrics_dict, save_base_dir):
+    def _save_metric_predictions(metrics_dict, save_base_dir):
         df = pd.DataFrame(metrics_dict).transpose()
         df = df.sort_index()
         output_file_path = os.path.join(save_base_dir, 'results.csv')

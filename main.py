@@ -77,6 +77,10 @@ def main():
         comet_experiment=experiment,
         checkpoint_dir=args.checkpoint_dir,
         profile=args.profile,
+        optimizer_type=args.optimizer_type,
+        lr=args.lr,
+        epoch_milestones=args.milestones,
+        gamma=args.gamma,
     )
     flow(
         data_provider=data_provider,
