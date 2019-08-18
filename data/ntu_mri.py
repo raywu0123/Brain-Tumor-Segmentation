@@ -68,7 +68,7 @@ class NtuDataGenerator(DataGeneratorBase):
 
     valid_diagnosis = {'metastasis', 'meningioma', 'schwannoma', 'pituitary', 'AVM', 'TN'}
 
-    def __init__(self, data_ids, data_format, data_dir, random=True):
+    def __init__(self, data_ids, data_format, data_dir, random=True, **kwargs):
         self.data_dir = data_dir
         self.data_ids = data_ids
 
