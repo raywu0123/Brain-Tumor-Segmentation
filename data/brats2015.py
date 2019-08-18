@@ -87,7 +87,7 @@ class Brats2015DataProvider(DataProviderBase):
 
 class Brats2015DataGenerator(DataGeneratorBase):
 
-    def __init__(self, data_ids, data_format, modal_bases, random=True):
+    def __init__(self, data_ids, data_format, modal_bases, random=True, **kwargs):
         self.data_ids = data_ids
         self._data_format = data_format
         self.modal_bases = modal_bases
