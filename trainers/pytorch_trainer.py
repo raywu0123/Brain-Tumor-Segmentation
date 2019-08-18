@@ -24,12 +24,15 @@ class PytorchTrainer(TrainerBase, ABC):
     def __init__(
             self,
             model: torch.nn.Module,
+            dataset_size: int,
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
             lr: float = 1e-4,
             profile: bool = False,
             profile_epochs: int = 10,
     ):
+        self.dataset_size = dataset_size
+
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
         self.prob_prediction_path = None
@@ -37,6 +40,7 @@ class PytorchTrainer(TrainerBase, ABC):
 
         self.profile = cProfile.Profile(subcalls=False) if profile else None
         self.profile_epochs = profile_epochs
+        self.profile_steps = profile_epochs * dataset_size
         self.profile_export_file_path = os.path.join(self.result_path, 'profile.stat')
 
         self.comet_experiment = comet_experiment
@@ -83,31 +87,36 @@ class PytorchTrainer(TrainerBase, ABC):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
+        step_num = epoch_num * self.dataset_size
+
         verbose_epoch_num = kwargs['verbose_epoch_num']
+        verbose_step_num = verbose_epoch_num * self.dataset_size
 
         if self.profile is not None:
             print('Profiling...')
             self.profile.enable()
 
-        for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
+        for self.i_step in range(self.i_step, self.i_step + step_num):
             log_dict = self.model.fit_generator(
                 training_data_generator, self.opt, batch_size=batch_size
             )
-            if self.i_epoch % verbose_epoch_num == 0:
-                print(f'epoch: {self.i_epoch}', log_dict)
+            # fits on one single volume
+
+            if self.i_step % verbose_step_num == 0:
+                print(f'step: {self.i_step}', log_dict)
                 self.save()
                 metrics = self._validate(
                     validation_data_generator, metric, batch_size=batch_size
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_metrics(
-                        log_dict, prefix='training', step=self.i_epoch
+                        log_dict, prefix='training', step=self.i_step / self.dataset_size
                     )
                     self.comet_experiment.log_metrics(
-                        metrics, prefix='validation', step=self.i_epoch
+                        metrics, prefix='validation', step=self.i_step / self.dataset_size
                     )
 
-            if self.i_epoch == self.profile_epochs and self.profile is not None:
+            if self.i_step == self.profile_steps and self.profile is not None:
                 self.profile.disable()
                 with open(self.profile_export_file_path, 'w') as f_out:
                     with redirect_stdout(f_out):

@@ -73,6 +73,7 @@ def main():
     model = get_model(data_provider.data_format)
     trainer = PytorchTrainer(
         model=model,
+        dataset_size=len(data_provider),
         comet_experiment=experiment,
         checkpoint_dir=args.checkpoint_dir,
         profile=args.profile,

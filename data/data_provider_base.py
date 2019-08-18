@@ -49,3 +49,6 @@ class DataProviderBase(ABC):
     @abstractmethod
     def data_format(self) -> dict:
         pass
+
+    def __len__(self):
+        return len(self.train_ids)

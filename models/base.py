@@ -28,11 +28,17 @@ class PytorchModelBase(ModelBase, nn.Module):
             data_format=data_format
         )
 
-    def fit_generator(self, training_data_generator, optimizer, **kwargs):
+    def fit_generator(self, training_data_generator, optimizer, batch_size, **kwargs):
+        """
+        fit on generator for one single volume
+        """
         self.train()
         data = training_data_generator(batch_size=1)
+        # batch_size here stands for number of volumes
+        # most devices can only hold one singe volume
+
         batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(
-            data, training=True, **kwargs
+            data, batch_size, training=True, **kwargs
         )
         logs = []
         for batch_data, batch_label in zip(batch_data_list, batch_label_list):
