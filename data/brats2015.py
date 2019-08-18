@@ -88,22 +88,8 @@ class Brats2015DataProvider(DataProviderBase):
 class Brats2015DataGenerator(DataGeneratorBase):
 
     def __init__(self, data_ids, data_format, modal_bases, random=True, **kwargs):
-        self.data_ids = data_ids
-        self._data_format = data_format
+        super().__init__(data_ids, data_format, random)
         self.modal_bases = modal_bases
-        self.random = random
-        self.current_index = 0
-
-    def __len__(self):
-        return len(self.data_ids)
-
-    def __call__(self, batch_size):
-        if self.random:
-            selected_data_ids = np.random.choice(self.data_ids, batch_size)
-        else:
-            selected_data_ids = self.data_ids[self.current_index: self.current_index + batch_size]
-            self.current_index += batch_size
-        return self._get_data(selected_data_ids)
 
     def _get_image_and_label(self, data_id):
         image = [self._get_image_from_folder(data_id, base) for base in self.modal_bases]
