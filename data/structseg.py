@@ -90,23 +90,8 @@ class StructSeg2019DataProvider(DataProviderBase):
 class StructSegGenerator(DataGeneratorBase):
 
     def __init__(self, data_ids, data_format, data_dir, random=True, **kwargs):
+        super().__init__(data_ids, data_format, random)
         self.data_dir = data_dir
-        self.data_ids = data_ids
-
-        self._data_format = data_format
-        self.random = random
-        self.current_index = 0
-
-    def __len__(self):
-        return len(self.data_ids)
-
-    def __call__(self, batch_size):
-        if self.random:
-            selected_data_ids = np.random.choice(self.data_ids, batch_size)
-        else:
-            selected_data_ids = self.data_ids[self.current_index: self.current_index + batch_size]
-            self.current_index += batch_size
-        return self._get_data(selected_data_ids)
 
     def _get_data(self, data_ids):
         batch_volume = np.empty((
@@ -125,7 +110,9 @@ class StructSegGenerator(DataGeneratorBase):
         ))
         affines = []
         for idx, data_id in enumerate(data_ids):
-            batch_volume[idx], batch_label[idx], affine = self._get_image_and_label(data_id)
+            volume, label, affine = self._get_image_and_label(data_id)
+            batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']],
+            batch_label[idx, :, :len(volume)] = label[:, :self.data_format['depth']]
             affines.append(affine)
 
         return {
@@ -150,19 +137,4 @@ class StructSegGenerator(DataGeneratorBase):
             label = to_one_hot_label(label, self.data_format['class_num'])
         else:
             label = None
-
-        if self.data_format['depth'] > image.shape[0]:
-            diff = self.data_format['depth'] - image.shape[0]
-            image = np.pad(
-                image,
-                ((0, diff), (0, 0), (0, 0)),
-                mode="constant",
-                constant_values=0,
-            )
-            label = np.pad(
-                label,
-                ((0, 0), (0, diff), (0, 0), (0, 0)),
-                mode="constant",
-                constant_values=0,
-            )
         return image, label, affine

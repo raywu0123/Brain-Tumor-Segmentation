@@ -3,23 +3,19 @@ import time
 
 import numpy as np
 
-from .base import DataGeneratorBase
+from .base import DataGeneratorWrapperBase, DataGeneratorBase
 from .augmentations.volume_augmentation import VolumeAugmentor
 
 
-class AsyncDataGeneratorWrapper(DataGeneratorBase):
+class AsyncDataGeneratorWrapper(DataGeneratorWrapperBase):
 
     def __init__(self, data_generator, max_q_size=10):
-        self.data_generator = data_generator
-        self._data_format = data_generator.data_format
+        super().__init__(data_generator)
 
         self.max_q_size = max_q_size
         self.data_queue = mp.Queue(maxsize=max_q_size)
         self.process = mp.Process(target=self._put_data_into_queue, daemon=True)
         self.process.start()
-
-    def __len__(self):
-        return len(self.data_generator)
 
     def __call__(self, batch_size):
         if batch_size > self.max_q_size:
@@ -47,15 +43,11 @@ class AsyncDataGeneratorWrapper(DataGeneratorBase):
                 self.data_queue.put(data)
 
 
-class AugmentedDataGeneratorWrapper(DataGeneratorBase):
+class AugmentedDataGeneratorWrapper(DataGeneratorWrapperBase):
 
     def __init__(self, data_generator: DataGeneratorBase):
-        self.data_generator = data_generator
+        super().__init__(data_generator)
         self.augmentor = VolumeAugmentor(data_generator.data_format)
-        self._data_format = data_generator.data_format
-
-    def __len__(self):
-        return len(self.data_generator)
 
     def __call__(self, batch_size):
         batch_data = self.data_generator(batch_size)
@@ -66,14 +58,10 @@ class AugmentedDataGeneratorWrapper(DataGeneratorBase):
         return batch_data
 
 
-class NormalizedDataGeneratorWrapper(DataGeneratorBase):
+class NormalizedDataGeneratorWrapper(DataGeneratorWrapperBase):
 
     def __init__(self, data_generator: DataGeneratorBase):
-        self.data_generator = data_generator
-        self._data_format = data_generator.data_format
-
-    def __len__(self):
-        return len(self.data_generator)
+        super().__init__(data_generator)
 
     def __call__(self, batch_size):
         batch_data = self.data_generator(batch_size)

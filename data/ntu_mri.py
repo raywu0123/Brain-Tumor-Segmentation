@@ -69,13 +69,9 @@ class NtuDataGenerator(DataGeneratorBase):
     valid_diagnosis = {'metastasis', 'meningioma', 'schwannoma', 'pituitary', 'AVM', 'TN'}
 
     def __init__(self, data_ids, data_format, data_dir, random=True, **kwargs):
+        super().__init__(data_ids, data_format, random)
+
         self.data_dir = data_dir
-        self.data_ids = data_ids
-
-        self._data_format = data_format
-        self.random = random
-        self.current_index = 0
-
         self.diagnosis_dict = self._read_diagnosis_file(NTU_DIAGNOSIS_DIR)
 
         self.image_path = os.path.join(data_dir, 'image')
@@ -94,17 +90,6 @@ class NtuDataGenerator(DataGeneratorBase):
                     diagnosis = ''
                 diagnosis_dict[row['0_medical_records']] = diagnosis
         return diagnosis_dict
-
-    def __len__(self):
-        return len(self.data_ids)
-
-    def __call__(self, batch_size):
-        if self.random:
-            selected_data_ids = np.random.choice(self.data_ids, batch_size)
-        else:
-            selected_data_ids = self.data_ids[self.current_index: self.current_index + batch_size]
-            self.current_index += batch_size
-        return self._get_data(selected_data_ids)
 
     def _get_data(self, data_ids):
         batch_volume = np.empty((
