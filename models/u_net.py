@@ -16,6 +16,7 @@ class UNet(PytorchModelBase):
         kernel_size: int = 3,
         channel_num: int = 64,
         conv_times: int = 2,
+        use_position=False,
         **kwargs,
     ):
         super(UNet, self).__init__(
@@ -23,8 +24,11 @@ class UNet(PytorchModelBase):
             data_format=data_format,
             **kwargs,
         )
+        self.use_position = use_position
         self.floor_num = floor_num
         image_chns, class_num = data_format['channels'], data_format['class_num']
+        if use_position:
+            image_chns += 1
         self.down_layers = nn.ModuleList()
         self.up_layers = nn.ModuleList()
 
@@ -42,9 +46,15 @@ class UNet(PytorchModelBase):
         self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
     def forward(self, inp):
-        inp = inp['slice']
+        inp, pos = inp['slice'], inp['position']
         x = normalize_batch_image(inp)
         x = get_tensor_from_array(x)
+
+        if self.use_position:
+            pos = get_tensor_from_array(pos)
+            pos = pos.view(pos.shape[0], 1, 1, 1)
+            pos = pos.expand(-1, 1, x.shape[-2], x.shape[-1])
+            x = torch.cat([x, pos], dim=1)
 
         x_out = []
         for down_layer in self.down_layers:
