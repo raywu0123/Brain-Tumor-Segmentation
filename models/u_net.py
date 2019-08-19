@@ -42,6 +42,7 @@ class UNet(PytorchModelBase):
         self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
     def forward(self, inp):
+        inp = inp['slice']
         x = normalize_batch_image(inp)
         x = get_tensor_from_array(x)
 
