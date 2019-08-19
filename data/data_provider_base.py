@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from utils import MetricClass
+from metrics import MetricClass
 from .wrappers import (
     AsyncDataGeneratorWrapper,
     NormalizedDataGeneratorWrapper,

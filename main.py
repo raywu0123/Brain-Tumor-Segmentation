@@ -17,6 +17,7 @@ from models import ModelHub
 from data.data_providers import DataProviderHub
 from utils import parse_exp_id
 from trainers.pytorch_trainer import PytorchTrainer
+from optimizers import OptimizerFactory
 
 load_dotenv('./.env')
 RESULT_DIR = os.environ.get('RESULT_DIR')
@@ -71,16 +72,24 @@ def main():
     data_provider = get_data_provider(data_provider_parameters)
     get_model, fit_hyper_parameters = ModelHub[args.model_id]
     model = get_model(data_provider.data_format)
+
+    optimizer_factory = OptimizerFactory()
+    optimizer, scheduler = optimizer_factory(
+        model_parameters=model.parameters(),
+        dataset_size=len(data_provider),
+        optimizer_type=args.optimizer_type,
+        lr=args.lr,
+        epoch_milestones=args.epoch_milestones,
+        gamma=args.gamma,
+    )
     trainer = PytorchTrainer(
         model=model,
         dataset_size=len(data_provider),
         comet_experiment=experiment,
         checkpoint_dir=args.checkpoint_dir,
         profile=args.profile,
-        optimizer_type=args.optimizer_type,
-        lr=args.lr,
-        epoch_milestones=args.milestones,
-        gamma=args.gamma,
+        optimizer=optimizer,
+        scheduler=scheduler,
     )
     flow(
         data_provider=data_provider,

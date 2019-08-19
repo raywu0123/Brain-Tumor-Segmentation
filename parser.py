@@ -91,7 +91,6 @@ def add_general_args(parser):
 def add_optimizing_args(parser):
     parser.add_argument(
         '-lr',
-        '--learning_rate',
         type=float,
         default=1e-4,
     )
@@ -99,14 +98,14 @@ def add_optimizing_args(parser):
         '-ot',
         '--optimizer_type',
         type=str,
-        default='adam',
+        default='Adam',
     )
     parser.add_argument(
         '-mil',
-        '--milestones',
+        '--epoch_milestones',
         type=int,
         nargs='+',
-        defualt=[50, 70],
+        default=[50, 70],
         help='learning rate scheduler milestone, unit: epoch'
     )
     parser.add_argument(

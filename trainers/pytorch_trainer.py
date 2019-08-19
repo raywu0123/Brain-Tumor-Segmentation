@@ -3,6 +3,7 @@ import os
 import cProfile
 from contextlib import redirect_stdout
 import sys
+from math import ceil
 
 import comet_ml
 import torch
@@ -24,17 +25,17 @@ class PytorchTrainer(TrainerBase, ABC):
     def __init__(
             self,
             model: torch.nn.Module,
+            optimizer,
+            scheduler,
             dataset_size: int,
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
-            optimizer_type: str = 'adam',
-            lr: float = 1e-4,
-            epoch_milestones=(50, 70),
-            gamma=0.1,
             profile: bool = False,
             profile_epochs: int = 1,
     ):
         self.dataset_size = dataset_size
+        self.opt = optimizer
+        self.scheduler = scheduler
 
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
@@ -52,14 +53,6 @@ class PytorchTrainer(TrainerBase, ABC):
         if torch.cuda.is_available():
             self.model.cuda()
         print(f'Total parameters: {self.count_parameters()}')
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
-
-        self.step_milestones = [n_epoch * dataset_size for n_epoch in epoch_milestones]
-        self.lr_schedule = torch.optim.lr_scheduler.MultiStepLR(
-            self.opt,
-            milestones=self.step_milestones,
-            gamma=gamma,
-        )
         if checkpoint_dir is not None:
             self.load(checkpoint_dir)
 
@@ -92,14 +85,20 @@ class PytorchTrainer(TrainerBase, ABC):
         pred = self.model.predict(batch_data, **kwargs)
         return metric(pred, label).all_metrics()
 
-    def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
+    def fit_generator(
+            self,
+            training_data_generator,
+            validation_data_generator,
+            metric,
+            **kwargs
+    ):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
         step_num = epoch_num * self.dataset_size
 
         verbose_epoch_num = kwargs['verbose_epoch_num']
-        verbose_step_num = verbose_epoch_num * self.dataset_size
+        verbose_step_num = ceil(verbose_epoch_num * self.dataset_size)
 
         if self.profile is not None:
             print('Profiling...')
@@ -109,20 +108,21 @@ class PytorchTrainer(TrainerBase, ABC):
             log_dict = self.model.fit_generator(
                 training_data_generator, self.opt, batch_size=batch_size
             )
-            # fits on one single volume
+            self.scheduler.step()
+            # fits on one single volume, one step = one volume
 
             if self.i_step % verbose_step_num == 0:
-                print(f'step: {self.i_step}', log_dict)
+                print(f'epoch: {self.i_step / self.dataset_size:.2}', log_dict)
                 self.save()
                 metrics = self._validate(
                     validation_data_generator, metric, batch_size=batch_size
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_metrics(
-                        log_dict, prefix='training', step=self.i_step / self.dataset_size
+                        log_dict, prefix='training', step=self.i_step
                     )
                     self.comet_experiment.log_metrics(
-                        metrics, prefix='validation', step=self.i_step / self.dataset_size
+                        metrics, prefix='validation', step=self.i_step
                     )
 
             if self.i_step == self.profile_steps and self.profile is not None:
