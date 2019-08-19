@@ -1,5 +1,6 @@
 import os
 
+from tqdm import tqdm
 import nibabel as nib
 import numpy as np
 np.random.seed = 0
@@ -89,9 +90,15 @@ class StructSeg2019DataProvider(DataProviderBase):
 
 class StructSegGenerator(DataGeneratorBase):
 
-    def __init__(self, data_ids, data_format, data_dir, random=True, **kwargs):
+    def __init__(self, data_ids, data_format, data_dir, random=True, preload=False, **kwargs):
         super().__init__(data_ids, data_format, random)
         self.data_dir = data_dir
+        self.preload = preload
+        if preload:
+            self.all_volumes = {}
+            self.all_labels = {}
+            self.all_affines = {}
+            self._preload()
 
     def _get_data(self, data_ids):
         batch_volume = np.empty((
@@ -110,8 +117,18 @@ class StructSegGenerator(DataGeneratorBase):
         ))
         affines = []
         for idx, data_id in enumerate(data_ids):
-            volume, label, affine = self._get_image_and_label(data_id)
-            batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']],
+            if self.preload:
+                volume = self.all_volumes[data_id]
+                label = self.all_labels[data_id]
+                affine = self.all_affines[data_id]
+            else:
+                volume, label, affine = self._preload_get_image_and_label(data_id)
+
+            label = to_one_hot_label(
+                label,
+                self.data_format['class_num'],
+            )
+            batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']]
             batch_label[idx, :, :len(volume)] = label[:, :self.data_format['depth']]
             affines.append(affine)
 
@@ -122,7 +139,13 @@ class StructSegGenerator(DataGeneratorBase):
             'affines': affines,
         }
 
-    def _get_image_and_label(self, data_id):
+    def _preload(self):
+        print('Preloading Data-Generator')
+        for data_id in tqdm(self.data_ids):
+            self.all_volumes[data_id], self.all_labels[data_id], self.all_affines[data_id] =\
+                self._preload_get_image_and_label(data_id)
+
+    def _preload_get_image_and_label(self, data_id):
         # Dims: (N, C, D, H, W)
         img_path = os.path.join(self.data_dir, f"{data_id}/data.nii.gz")
         image_obj = nib.load(img_path)
@@ -134,7 +157,6 @@ class StructSegGenerator(DataGeneratorBase):
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
             label = np.transpose(label, (2, 0, 1))
-            label = to_one_hot_label(label, self.data_format['class_num'])
         else:
             label = None
         return image, label, affine

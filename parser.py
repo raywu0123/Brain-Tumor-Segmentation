@@ -72,10 +72,17 @@ def add_general_args(parser):
         action='store_true',
         help='if True, activate the profiler and dump the log'
     )
+    parser.add_argument(
+        '--preload',
+        dest='preload',
+        action='store_true',
+        help='if True, preload the whole dataset before training'
+    )
     parser.set_defaults(do_comet=False)
     parser.set_defaults(augmentation=False)
     parser.set_defaults(async_load=False)
     parser.set_defaults(profile=False)
+    parser.set_defaults(preload=False)
 
 
 def add_prediction_args(parser):
