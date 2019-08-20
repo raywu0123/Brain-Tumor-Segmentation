@@ -112,7 +112,7 @@ class PytorchTrainer(TrainerBase, ABC):
             # fits on one single volume, one step = one volume
 
             if self.i_step % verbose_step_num == 0:
-                print(f'epoch: {self.i_step / self.dataset_size:.2}', log_dict)
+                print(f'epoch: {self.i_step / self.dataset_size:.2f}', log_dict)
                 self.save()
                 metrics = self._validate(
                     validation_data_generator, metric, batch_size=batch_size

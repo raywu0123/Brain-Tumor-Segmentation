@@ -8,7 +8,7 @@ from .pspnet import PSPNet
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
     'epoch_num': 1500 * 200,
-    'verbose_epoch_num': 0.1,
+    'verbose_epoch_num': 0.2,
 }
 
 
