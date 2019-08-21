@@ -7,7 +7,7 @@ np.random.seed = 0
 from .data_provider_base import DataProviderBase
 from .base import DataGeneratorBase
 from .utils import to_one_hot_label
-from utils import BRATSMetricClass
+from metrics import BRATSMetricClass
 
 from dotenv import load_dotenv
 

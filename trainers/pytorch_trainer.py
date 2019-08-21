@@ -3,6 +3,7 @@ import os
 import cProfile
 from contextlib import redirect_stdout
 import sys
+from math import ceil
 
 import comet_ml
 import torch
@@ -24,12 +25,18 @@ class PytorchTrainer(TrainerBase, ABC):
     def __init__(
             self,
             model: torch.nn.Module,
+            optimizer,
+            scheduler,
+            dataset_size: int,
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
-            lr: float = 1e-4,
             profile: bool = False,
-            profile_epochs: int = 10,
+            profile_epochs: int = 1,
     ):
+        self.dataset_size = dataset_size
+        self.opt = optimizer
+        self.scheduler = scheduler
+
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
         self.prob_prediction_path = None
@@ -37,6 +44,7 @@ class PytorchTrainer(TrainerBase, ABC):
 
         self.profile = cProfile.Profile(subcalls=False) if profile else None
         self.profile_epochs = profile_epochs
+        self.profile_steps = profile_epochs * dataset_size
         self.profile_export_file_path = os.path.join(self.result_path, 'profile.stat')
 
         self.comet_experiment = comet_experiment
@@ -45,12 +53,10 @@ class PytorchTrainer(TrainerBase, ABC):
         if torch.cuda.is_available():
             self.model.cuda()
         print(f'Total parameters: {self.count_parameters()}')
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=lr)
-
         if checkpoint_dir is not None:
             self.load(checkpoint_dir)
 
-        self.i_epoch = 0
+        self.i_step = 0
 
     def count_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -58,7 +64,7 @@ class PytorchTrainer(TrainerBase, ABC):
     def save(self):
         torch.save(
             {
-                'epoch': self.i_epoch,
+                'step': self.i_step,
                 'state_dict': self.model.state_dict(),
                 'optimizer': self.opt.state_dict(),
             },
@@ -70,7 +76,7 @@ class PytorchTrainer(TrainerBase, ABC):
         checkpoint = torch.load(os.path.join(file_path, 'checkpoint.pth.tar'))
         self.model.load_state_dict(checkpoint['state_dict'])
         self.opt.load_state_dict(checkpoint['optimizer'])
-        self.i_epoch = checkpoint['epoch'] + 1
+        self.i_step = checkpoint['step'] + 1
         print(f'model loaded from {file_path}')
 
     def _validate(self, validation_data_generator, metric, **kwargs):
@@ -79,35 +85,47 @@ class PytorchTrainer(TrainerBase, ABC):
         pred = self.model.predict(batch_data, **kwargs)
         return metric(pred, label).all_metrics()
 
-    def fit_generator(self, training_data_generator, validation_data_generator, metric, **kwargs):
+    def fit_generator(
+            self,
+            training_data_generator,
+            validation_data_generator,
+            metric,
+            **kwargs
+    ):
         print(kwargs)
         batch_size = kwargs['batch_size']
         epoch_num = kwargs['epoch_num']
+        step_num = epoch_num * self.dataset_size
+
         verbose_epoch_num = kwargs['verbose_epoch_num']
+        verbose_step_num = ceil(verbose_epoch_num * self.dataset_size)
 
         if self.profile is not None:
             print('Profiling...')
             self.profile.enable()
 
-        for self.i_epoch in range(self.i_epoch, self.i_epoch + epoch_num):
+        for self.i_step in range(self.i_step, self.i_step + step_num):
             log_dict = self.model.fit_generator(
                 training_data_generator, self.opt, batch_size=batch_size
             )
-            if self.i_epoch % verbose_epoch_num == 0:
-                print(f'epoch: {self.i_epoch}', log_dict)
+            self.scheduler.step()
+            # fits on one single volume, one step = one volume
+
+            if self.i_step % verbose_step_num == 0:
+                print(f'epoch: {self.i_step / self.dataset_size:.2f}', log_dict)
                 self.save()
                 metrics = self._validate(
                     validation_data_generator, metric, batch_size=batch_size
                 )
                 if self.comet_experiment is not None:
                     self.comet_experiment.log_metrics(
-                        log_dict, prefix='training', step=self.i_epoch
+                        log_dict, prefix='training', step=self.i_step
                     )
                     self.comet_experiment.log_metrics(
-                        metrics, prefix='validation', step=self.i_epoch
+                        metrics, prefix='validation', step=self.i_step
                     )
 
-            if self.i_epoch == self.profile_epochs and self.profile is not None:
+            if self.i_step == self.profile_steps and self.profile is not None:
                 self.profile.disable()
                 with open(self.profile_export_file_path, 'w') as f_out:
                     with redirect_stdout(f_out):
@@ -160,7 +178,7 @@ class PytorchTrainer(TrainerBase, ABC):
         save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
 
     @staticmethod
-    def _save_metric_predictions(self, metrics_dict, save_base_dir):
+    def _save_metric_predictions(metrics_dict, save_base_dir):
         df = pd.DataFrame(metrics_dict).transpose()
         df = df.sort_index()
         output_file_path = os.path.join(save_base_dir, 'results.csv')

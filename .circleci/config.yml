@@ -20,7 +20,7 @@ jobs:
           name: install dependencies
           command: |
             pipenv run pip install -U Cython
-            pipenv install --dev
+            pipenv install --dev --skip-lock
       - save_cache:
           key: brain-tumor-segmentation-cache-180919-{{ checksum "Pipfile.lock" }}
           paths:
