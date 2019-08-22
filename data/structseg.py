@@ -8,6 +8,7 @@ np.random.seed = 0
 from .base import DataGeneratorBase
 from .data_provider_base import DataProviderBase
 from .utils import to_one_hot_label
+from metrics import StructSegHaNMetric, NTUMetric
 
 from dotenv import load_dotenv
 
@@ -47,6 +48,7 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 152,
                 "class_num": 23,
             },
+            StructSegHaNMetric,
         ),
         'Naso': (
             f"{STRUCTSEG_DIR}/Naso_GTV",
@@ -55,6 +57,7 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 152,
                 "class_num": 2,
             },
+            NTUMetric,
         ),
         'Thoracic': (
             f"{STRUCTSEG_DIR}/Thoracic_OAR",
@@ -63,6 +66,7 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 127,
                 "class_num": 7,
             },
+            NTUMetric,
         ),
         'Lung': (
             f"{STRUCTSEG_DIR}/Lung_GTV",
@@ -71,11 +75,12 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 127,
                 "class_num": 2,
             },
+            NTUMetric,
         ),
     }
 
     def __init__(self, args):
-        self.data_dir, self._data_format = self.DIR_HUB[args]
+        self.data_dir, self._data_format, self._metric = self.DIR_HUB[args]
         self.all_ids = os.listdir(self.data_dir)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]

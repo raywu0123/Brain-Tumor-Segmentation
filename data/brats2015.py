@@ -7,7 +7,7 @@ np.random.seed = 0
 from .data_provider_base import DataProviderBase
 from .base import DataGeneratorBase
 from .utils import to_one_hot_label
-from metrics import BRATSMetricClass
+from metrics import BRATSMetric
 
 from dotenv import load_dotenv
 
@@ -24,7 +24,7 @@ BRATS2015_LGG_DIR = os.path.join(BRATS2015_DIR, './LGG')
 class Brats2015DataProvider(DataProviderBase):
 
     def __init__(self, args):
-        self._metric = BRATSMetricClass
+        self._metric = BRATSMetric
 
         self.data_dirs = self._get_dirs(args)
 
