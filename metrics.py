@@ -32,9 +32,10 @@ def cross_entropy(prob_pred, tar):
     temp = np.swapaxes(tar, 0, 1).reshape(channel_num, -1)
     weights = np.divide(
         1., np.mean(temp, axis=1),
-        out=np.ones(tar.shape[1]),
+        out=np.ones(channel_num),
         where=np.mean(temp, axis=1) != 0,
     )
+    weights /= np.sum(weights)
 
     prob_pred = np.transpose(prob_pred, axes=[0, 4, 2, 3, 1])
     tar = np.transpose(tar, axes=[0, 4, 2, 3, 1])
