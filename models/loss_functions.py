@@ -13,6 +13,17 @@ def ce_minus_log_dice(pred: torch.Tensor, tar: np.array):
     return total_loss, {**log_1, **log_2}
 
 
+def ce_minus_log_dice_with_size_mismatch(output: torch.Tensor, target: np.array):
+    s_d = target.shape[2] // 2 - output.shape[2] // 2
+    s_h = target.shape[3] // 2 - output.shape[3] // 2
+    s_w = target.shape[4] // 2 - output.shape[4] // 2
+    e_d = s_d + output.shape[2]
+    e_h = s_h + output.shape[3]
+    e_w = s_w + output.shape[4]
+    target = target[:, :, s_d:e_d, s_h:e_h, s_w:e_w]
+    return ce_minus_log_dice(output, target)
+
+
 def weighted_cross_entropy(output: torch.Tensor, target: np.array):
     assert(output.shape == target.shape)
 
@@ -32,6 +43,17 @@ def weighted_cross_entropy(output: torch.Tensor, target: np.array):
     loss = target * weights * torch.log(output + epsilon)
     loss = -torch.mean(torch.sum(loss, dim=-1))
     return loss, {'crossentropy_loss': loss.item()}
+
+
+def weighted_cross_entropy_with_size_mismatch(output: torch.Tensor, target: np.array):
+    s_d = target.shape[2] // 2 - output.shape[2] // 2
+    s_h = target.shape[3] // 2 - output.shape[3] // 2
+    s_w = target.shape[4] // 2 - output.shape[4] // 2
+    e_d = s_d + output.shape[2]
+    e_h = s_h + output.shape[3]
+    e_w = s_w + output.shape[4]
+    target = target[:, :, s_d:e_d, s_h:e_h, s_w:e_w]
+    return weighted_cross_entropy(output, target)
 
 
 def soft_dice_score(pred: torch.Tensor, tar: np.array):
