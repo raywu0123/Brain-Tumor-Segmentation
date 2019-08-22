@@ -25,8 +25,6 @@ def soft_dice(prob_pred, tar):
 def cross_entropy(prob_pred, tar):
     if not ((tar == 0) | (tar == 1)).all():
         raise ValueError('Target data should be binary.')
-    prob_pred = prob_pred[np.newaxis, :, :, :, :]
-    tar = tar[np.newaxis, :, :, :, :]
 
     channel_num = tar.shape[1]
     temp = np.swapaxes(tar, 0, 1).reshape(channel_num, -1)
@@ -35,7 +33,7 @@ def cross_entropy(prob_pred, tar):
         out=np.ones(channel_num),
         where=np.mean(temp, axis=1) != 0,
     )
-    weights /= np.sum(weights)
+    weights *= channel_num / np.sum(weights)
 
     prob_pred = np.transpose(prob_pred, axes=[0, 4, 2, 3, 1])
     tar = np.transpose(tar, axes=[0, 4, 2, 3, 1])
@@ -65,17 +63,13 @@ class MetricBase:
                 'Input shape of Metric-Class should be (N, C, D, H, W), '
                 f'got {pred.shape} instead.'
             )
-        # Strip background
-        self.prob_pred = pred[:, 1:]
-        self.pred = hard_max(pred)[:, 1:]
-        self.tar = tar[:, 1:]
         self.do_all_metrics = {}
 
     def all_metrics(self, verbose=True):
         results = {metric: metric_func() for (metric, metric_func) in self.do_all_metrics.items()}
         if verbose:
             for metric, result in results.items():
-                print(f'{metric}: {result}')
+                print(f'{metric}: {result:.2f}')
         return results
 
 
@@ -86,6 +80,12 @@ class NTUMetric(MetricBase):
             tar,
     ):
         super().__init__(pred, tar)
+
+        # Strip background
+        self.prob_pred = pred[:, 1:]
+        self.pred = hard_max(pred)[:, 1:]
+        self.tar = tar[:, 1:]
+
         self.do_all_metrics = {
             'soft_dice': self.soft_dice,
             'hard_dice': self.hard_dice,
@@ -183,7 +183,7 @@ class StructSegHaNMetric(MetricBase):
     class_weights = {
         'left eye': 100,
         'right eye': 100,
-        'left_lens': 50,
+        'left lens': 50,
         'right lens': 50,
         'left optical nerve': 80,
         'right optical nerve': 80,
@@ -205,8 +205,16 @@ class StructSegHaNMetric(MetricBase):
         'right mandible': 100,
     }
 
-    def __init__(self, prob_pred, tar):
-        super().__init__(prob_pred, tar)
+    def __init__(self, pred, tar):
+        super().__init__(pred, tar)
+
+        # Strip background
+        self.prob_pred_with_background = pred
+        self.tar_with_background = tar
+
+        self.prob_pred = pred[:, 1:]
+        self.pred = hard_max(pred)[:, 1:]
+        self.tar = tar[:, 1:]
 
         soft_dice_metrics = {
             f'soft_dice_{metric_name}': partial(self.one_class_metric_func, soft_dice, class_idx)
@@ -217,16 +225,16 @@ class StructSegHaNMetric(MetricBase):
             for class_idx, metric_name in enumerate(self.class_weights.keys())
         }
         self.do_all_metrics = {
-            'crossentropy': self.cross_entropy,
             **soft_dice_metrics,
             **hard_dice_metrics,
+            'crossentropy': self.cross_entropy,
         }
 
     def one_class_metric_func(self, metric_func, class_idx):
         return volumewise_mean_score(metric_func, self.pred[:, class_idx], self.tar[:, class_idx])
 
     def cross_entropy(self):
-        return volumewise_mean_score(cross_entropy, self.prob_pred, self.tar)
+        return cross_entropy(self.prob_pred_with_background, self.tar_with_background)
 
     def all_metrics(self, verbose=True):
         results = super(StructSegHaNMetric, self).all_metrics(verbose=False)
@@ -249,6 +257,5 @@ class StructSegHaNMetric(MetricBase):
 
         if verbose:
             for metric, result in new_results.items():
-                print(f'{metric}: {result}')
-
+                print(f'{metric}: {result:.2f}')
         return new_results
