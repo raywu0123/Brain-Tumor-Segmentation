@@ -75,6 +75,7 @@ def main():
         data_format=data_provider.data_format,
         loss_function_id=args.loss_function_id,
         clip_grad=args.clip_grad,
+        optim_batch_steps=args.optim_batch_steps,
     )
 
     optimizer_factory = OptimizerFactory()

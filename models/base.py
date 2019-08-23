@@ -26,7 +26,8 @@ class PytorchModelBase(ModelBase, nn.Module):
             batch_sampler_id: str,
             loss_function_id: str,
             data_format: dict,
-            clip_grad: float
+            clip_grad: float,
+            optim_batch_steps: int
     ):
         nn.Module.__init__(self)
         self.loss_fn = loss_function_hub[loss_function_id]
@@ -35,6 +36,8 @@ class PytorchModelBase(ModelBase, nn.Module):
             data_format=data_format
         )
         self.clip_grad = clip_grad
+        self.batch_step_num = 0  # keeps count of how many batches processed
+        self.optim_batch_steps = optim_batch_steps  # optimizer steps after this many steps
 
     def fit_generator(self, training_data_generator, optimizer, batch_size, **kwargs):
         """
@@ -49,19 +52,22 @@ class PytorchModelBase(ModelBase, nn.Module):
             data, batch_size, training=True, **kwargs
         )
         logs = []
+
+        self.zero_grad()
         for batch_data, batch_label in zip(batch_data_list, batch_label_list):
-            self.zero_grad()
             batch_pred = self.forward(batch_data)
             loss, log = self.loss_fn(batch_pred, batch_label)
-
+            loss /= self.optim_batch_steps
             logs.append(log)
-
             loss.backward()
 
             if self.clip_grad > 0:
                 torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip_grad)
 
-            optimizer.step()
+            self.batch_step_num += 1
+            if self.batch_step_num % self.optim_batch_steps == 0:
+                optimizer.step()
+                self.zero_grad()
 
         return summarize_logs(logs)
 
