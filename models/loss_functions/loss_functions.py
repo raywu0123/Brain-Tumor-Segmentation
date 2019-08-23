@@ -1,9 +1,8 @@
 import torch
 import numpy as np
 
-from .utils import get_tensor_from_array
-
-epsilon = 1e-8
+from models.utils import get_tensor_from_array
+from utils import epsilon
 
 
 def ce_minus_log_dice(pred: torch.Tensor, tar: np.array):
@@ -11,6 +10,11 @@ def ce_minus_log_dice(pred: torch.Tensor, tar: np.array):
     dice_score, log_2 = soft_dice_score(pred, tar)
     total_loss = crossentropy_loss - torch.log(dice_score)
     return total_loss, {**log_1, **log_2}
+
+
+def minus_dice(pred: torch.Tensor, tar: np.array):
+    dice_score, log = soft_dice_score(pred, tar)
+    return -dice_score, log
 
 
 def weighted_cross_entropy(output: torch.Tensor, target: np.array):
@@ -35,6 +39,30 @@ def weighted_cross_entropy(output: torch.Tensor, target: np.array):
 
 
 def soft_dice_score(pred: torch.Tensor, tar: np.array):
+    if not pred.shape == tar.shape:
+        raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {tar.shape}')
+    if not pred.shape[1] > 1:
+        raise ValueError(f'Number of channels should be greater than 1, '
+                         f'got data with shape {pred.shape}')
+    tar = get_tensor_from_array(tar)
+
+    # Strip background
+    pred = pred[:, 1:]
+    tar = tar[:, 1:]
+
+    m1 = pred.view(pred.shape[0], pred.shape[1], -1)
+    m2 = tar.view(tar.shape[0], tar.shape[1], -1)
+    intersection = m1 * m2
+
+    m1 = torch.sum(m1 ** 2, dim=2)
+    m2 = torch.sum(m2 ** 2, dim=2)
+    intersection = torch.sum(intersection, dim=2)
+
+    dice_score = torch.mean((2. * intersection + epsilon) / (m1 + m2 + epsilon))
+    return dice_score, {'soft_dice': dice_score.item()}
+
+
+def _soft_dice_score_deprecated(pred: torch.Tensor, tar: np.array):
     if not pred.shape == tar.shape:
         raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {tar.shape}')
     if not pred.shape[1] > 1:

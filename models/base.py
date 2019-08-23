@@ -5,6 +5,7 @@ from torch import nn
 
 from .batch_samplers import BatchSamplerHub
 from .utils import summarize_logs
+from .loss_functions import loss_function_hub
 
 
 class ModelBase(ABC):
@@ -20,9 +21,9 @@ class ModelBase(ABC):
 
 class PytorchModelBase(ModelBase, nn.Module):
 
-    def __init__(self, batch_sampler_id: str, loss_fn, data_format: dict):
+    def __init__(self, batch_sampler_id: str, loss_function_id: str, data_format: dict):
         nn.Module.__init__(self)
-        self.loss_fn = loss_fn
+        self.loss_fn = loss_function_hub[loss_function_id]
         self.batch_sampler_constructor = BatchSamplerHub[batch_sampler_id]
         self.batch_sampler = self.batch_sampler_constructor(
             data_format=data_format

@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
-from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array, normalize_batch_image
 
 
@@ -11,13 +10,14 @@ class ToyModel(PytorchModelBase):
     def __init__(
         self,
         data_format: dict,
+        loss_function_id: str = 'crossentropy-log(dice)',
         num_units: [int] = (32, 32, 64, 64, 128),
         pooling_layer_num: [int] = (1, 3),
         kernel_size: int = 3,
     ):
         super(ToyModel, self).__init__(
             batch_sampler_id='two_dim',
-            loss_fn=ce_minus_log_dice,
+            loss_function_id=loss_function_id,
             data_format=data_format,
         )
         self.image_chns = data_format['channels']

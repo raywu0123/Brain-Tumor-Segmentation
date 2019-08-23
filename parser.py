@@ -29,6 +29,12 @@ def add_general_args(parser):
         help='The medical-image data provider.',
     )
     parser.add_argument(
+        '-lid',
+        '--loss_function_id',
+        type=str,
+        default='crossentropy-log(dice)',
+    )
+    parser.add_argument(
         '-grs',
         '--global_random_seed',
         type=int,

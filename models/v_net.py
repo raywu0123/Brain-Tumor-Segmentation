@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
-from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array
 
 
@@ -11,6 +10,7 @@ class VNet(PytorchModelBase):
     def __init__(
             self,
             data_format: dict,
+            loss_function_id: str = 'crossentropy-log(dice)',
             duplication_num: int = 16,
             kernel_size: int = 3,
             conv_time: int = 2,
@@ -20,7 +20,7 @@ class VNet(PytorchModelBase):
         ):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
-            loss_fn=ce_minus_log_dice,
+            loss_function_id=loss_function_id,
             data_format=data_format,
         )
         # To work properly, kernel_size must be odd
