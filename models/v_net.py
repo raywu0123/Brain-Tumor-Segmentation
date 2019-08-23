@@ -10,18 +10,18 @@ class VNet(PytorchModelBase):
     def __init__(
             self,
             data_format: dict,
-            loss_function_id: str = 'crossentropy-log(dice)',
             duplication_num: int = 16,
             kernel_size: int = 3,
             conv_time: int = 2,
             n_layer: int = 4,
             batch_sampler_id='three_dim',
             dropout_rate: float = 0.,
+            **kwargs,
         ):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
-            loss_function_id=loss_function_id,
             data_format=data_format,
+            **kwargs,
         )
         # To work properly, kernel_size must be odd
         if kernel_size % 2 == 0:

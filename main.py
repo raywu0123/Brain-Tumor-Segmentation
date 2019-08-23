@@ -74,6 +74,7 @@ def main():
     model = get_model(
         data_format=data_provider.data_format,
         loss_function_id=args.loss_function_id,
+        clip_grad=args.clip_grad,
     )
 
     optimizer_factory = OptimizerFactory()

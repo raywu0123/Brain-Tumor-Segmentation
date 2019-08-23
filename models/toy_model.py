@@ -10,15 +10,16 @@ class ToyModel(PytorchModelBase):
     def __init__(
         self,
         data_format: dict,
-        loss_function_id: str = 'crossentropy-log(dice)',
+        batch_sampler_id: str = 'two_dim',
         num_units: [int] = (32, 32, 64, 64, 128),
         pooling_layer_num: [int] = (1, 3),
         kernel_size: int = 3,
+        **kwargs,
     ):
         super(ToyModel, self).__init__(
-            batch_sampler_id='two_dim',
-            loss_function_id=loss_function_id,
+            batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            **kwargs,
         )
         self.image_chns = data_format['channels']
         self.image_height = data_format['height']
