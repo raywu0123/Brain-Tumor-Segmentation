@@ -5,6 +5,7 @@ from torch import nn
 
 from .batch_samplers import BatchSamplerHub
 from .utils import summarize_logs
+from .loss_functions import loss_function_hub
 
 
 class ModelBase(ABC):
@@ -20,13 +21,20 @@ class ModelBase(ABC):
 
 class PytorchModelBase(ModelBase, nn.Module):
 
-    def __init__(self, batch_sampler_id: str, loss_fn, data_format: dict):
+    def __init__(
+            self,
+            batch_sampler_id: str,
+            loss_function_id: str,
+            data_format: dict,
+            clip_grad: float
+    ):
         nn.Module.__init__(self)
-        self.loss_fn = loss_fn
+        self.loss_fn = loss_function_hub[loss_function_id]
         self.batch_sampler_constructor = BatchSamplerHub[batch_sampler_id]
         self.batch_sampler = self.batch_sampler_constructor(
             data_format=data_format
         )
+        self.clip_grad = clip_grad
 
     def fit_generator(self, training_data_generator, optimizer, batch_size, **kwargs):
         """
@@ -49,7 +57,10 @@ class PytorchModelBase(ModelBase, nn.Module):
             logs.append(log)
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.parameters(), 0.5)
+
+            if self.clip_grad > 0:
+                torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip_grad)
+
             optimizer.step()
 
         return summarize_logs(logs)

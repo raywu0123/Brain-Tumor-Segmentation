@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
-from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array, normalize_batch_image
 
 
@@ -11,14 +10,16 @@ class ToyModel(PytorchModelBase):
     def __init__(
         self,
         data_format: dict,
+        batch_sampler_id: str = 'two_dim',
         num_units: [int] = (32, 32, 64, 64, 128),
         pooling_layer_num: [int] = (1, 3),
         kernel_size: int = 3,
+        **kwargs,
     ):
         super(ToyModel, self).__init__(
-            batch_sampler_id='two_dim',
-            loss_fn=ce_minus_log_dice,
+            batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            **kwargs,
         )
         self.image_chns = data_format['channels']
         self.image_height = data_format['height']

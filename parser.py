@@ -29,6 +29,19 @@ def add_general_args(parser):
         help='The medical-image data provider.',
     )
     parser.add_argument(
+        '-lid',
+        '--loss_function_id',
+        type=str,
+        default='crossentropy-log(dice)',
+    )
+    parser.add_argument(
+        '-cg',
+        '--clip_grad',
+        type=float,
+        default=0.,
+        help='The gradient norm will be clipped by this param if it is greater than 0.'
+    )
+    parser.add_argument(
         '-grs',
         '--global_random_seed',
         type=int,

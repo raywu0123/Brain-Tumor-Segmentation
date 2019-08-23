@@ -71,7 +71,11 @@ def main():
     get_data_provider, data_provider_parameters = data_provider_hub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
     get_model, fit_hyper_parameters = ModelHub[args.model_id]
-    model = get_model(data_provider.data_format)
+    model = get_model(
+        data_format=data_provider.data_format,
+        loss_function_id=args.loss_function_id,
+        clip_grad=args.clip_grad,
+    )
 
     optimizer_factory = OptimizerFactory()
     optimizer, scheduler = optimizer_factory(

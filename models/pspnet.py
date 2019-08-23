@@ -6,7 +6,6 @@ from torch.nn import functional as F
 
 from .base import PytorchModelBase
 from .utils import get_tensor_from_array
-from .loss_functions import ce_minus_log_dice
 from .extractors import extractor_hub
 
 
@@ -15,17 +14,18 @@ class PSPNet(PytorchModelBase):
     def __init__(
             self,
             data_format: dict,
+            batch_sampler_id='two_dim',
             sizes=(1, 2, 3, 6, 10),
             psp_size=512,
             # deep_features_size=256,
             backend='resnet34',
             pretrained=False,
-            batch_sampler_id='two_dim',
+            **kwargs,
     ):
         super().__init__(
             batch_sampler_id=batch_sampler_id,
-            loss_fn=ce_minus_log_dice,
             data_format=data_format,
+            **kwargs,
         )
         self.feats = extractor_hub[backend](data_format['channels'], pretrained)
         self.psp = PSPModule(psp_size, 1024, sizes)

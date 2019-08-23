@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .base import PytorchModelBase
-from .loss_functions import ce_minus_log_dice
 from .utils import get_tensor_from_array
 
 
@@ -17,11 +16,12 @@ class VNet(PytorchModelBase):
             n_layer: int = 4,
             batch_sampler_id='three_dim',
             dropout_rate: float = 0.,
+            **kwargs,
         ):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
-            loss_fn=ce_minus_log_dice,
             data_format=data_format,
+            **kwargs,
         )
         # To work properly, kernel_size must be odd
         if kernel_size % 2 == 0:
