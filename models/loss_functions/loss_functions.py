@@ -27,6 +27,7 @@ def weighted_cross_entropy(output: torch.Tensor, target: np.array):
         out=np.ones(target.shape[1]),
         where=np.mean(temp, axis=1) != 0,
     )
+    weights *= channel_num / np.sum(weights)
 
     weights = get_tensor_from_array(weights)
     target = get_tensor_from_array(target)
