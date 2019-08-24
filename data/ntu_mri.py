@@ -105,7 +105,7 @@ class NtuDataGenerator(DataGeneratorBase):
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
-        ))
+        ), dtype=bool)
         batch_diagnosis = []
         affines = []
         for idx, data_id in enumerate(data_ids):

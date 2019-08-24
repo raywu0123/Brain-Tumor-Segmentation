@@ -14,12 +14,13 @@ class GetClassWeights:
 
         cur_class_ratio = np.swapaxes(target, 0, 1).reshape(channel_num, -1).mean(axis=-1)
         cur_class_ratio /= np.sum(cur_class_ratio)
+
         cls.class_ratio = cls.class_ratio * cls.decay_rate + (1 - cls.decay_rate) * cur_class_ratio
 
         weights = np.divide(
-            1., np.mean(cls.class_ratio, axis=1),
+            1., cls.class_ratio,
             out=np.ones(channel_num),
-            where=np.mean(cls.class_ratio, axis=1) != 0,
+            where=cls.class_ratio != 0,
         )
         weights *= channel_num / weights.sum()
         return weights

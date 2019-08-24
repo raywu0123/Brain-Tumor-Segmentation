@@ -41,13 +41,15 @@ def generalized_soft_dice_score(pred: torch.Tensor, tar: np.array):
     if not pred.shape[1] > 1:
         raise ValueError(f'Number of channels should be greater than 1, '
                          f'got data with shape {pred.shape}')
+
+    class_weights = GetClassWeights()(tar)
+    class_weights = get_tensor_from_array(class_weights)
     tar = get_tensor_from_array(tar)
 
     m1 = pred.view(pred.shape[0], pred.shape[1], -1)
     m2 = tar.view(tar.shape[0], tar.shape[1], -1)
     intersection = m1 * m2
 
-    class_weights = GetClassWeights()(tar)
     m1 = torch.sum(m1 ** 2, dim=2)
     m2 = torch.sum(m2 ** 2, dim=2)
     intersection = torch.sum(intersection, dim=2)

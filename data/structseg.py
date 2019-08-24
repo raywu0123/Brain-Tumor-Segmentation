@@ -106,20 +106,22 @@ class StructSegGenerator(DataGeneratorBase):
             self._preload()
 
     def _get_data(self, data_ids):
-        batch_volume = np.empty((
+        batch_volume = np.zeros((
             len(data_ids),
             self.data_format['channels'],
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
         ))
-        batch_label = np.empty((
+        batch_label = np.zeros((
             len(data_ids),
             self.data_format['class_num'],
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
-        ))
+        ), dtype=bool)
+        batch_label[:, 0] = 1
+
         affines = []
         for idx, data_id in enumerate(data_ids):
             if self.preload:
