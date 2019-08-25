@@ -10,6 +10,9 @@ def brain_tumor_argparse():
     optimizing_args_group = parser.add_argument_group('Optimizing Arguments')
     add_optimizing_args(optimizing_args_group)
 
+    training_args_group = parser.add_argument_group('Training Arguments')
+    add_training_args(training_args_group)
+
     prediction_args_group = parser.add_argument_group('Prediction Arguments')
     add_prediction_args(prediction_args_group)
     return parser
@@ -27,19 +30,6 @@ def add_general_args(parser):
         '--data_provider_id',
         type=str,
         help='The medical-image data provider.',
-    )
-    parser.add_argument(
-        '-lid',
-        '--loss_function_id',
-        type=str,
-        default='crossentropy-log(dice)',
-    )
-    parser.add_argument(
-        '-cg',
-        '--clip_grad',
-        type=float,
-        default=0.,
-        help='The gradient norm will be clipped by this param if it is greater than 0.'
     )
     parser.add_argument(
         '-grs',
@@ -69,13 +59,6 @@ def add_general_args(parser):
         default='raywu0123',
     )
     parser.add_argument(
-        '-aug',
-        '--augmentation',
-        dest='augmentation',
-        action='store_true',
-        help='if True, activate data augmentation while training',
-    )
-    parser.add_argument(
         '-async'
         '--async_load',
         dest='async_load',
@@ -95,10 +78,40 @@ def add_general_args(parser):
         help='if True, preload the whole dataset before training'
     )
     parser.set_defaults(do_comet=False)
-    parser.set_defaults(augmentation=False)
     parser.set_defaults(async_load=False)
     parser.set_defaults(profile=False)
     parser.set_defaults(preload=False)
+
+
+def add_training_args(parser):
+    parser.add_argument(
+        '-lid',
+        '--loss_function_id',
+        type=str,
+        default='crossentropy-log(dice)',
+    )
+    parser.add_argument(
+        '-cg',
+        '--clip_grad',
+        type=float,
+        default=0.,
+        help='The gradient norm will be clipped by this param if it is greater than 0.'
+    )
+    parser.add_argument(
+        '-obs',
+        '--optim_batch_steps',
+        type=int,
+        default=1,
+        help='Gradient accumulation for this many batches.',
+    )
+    parser.add_argument(
+        '-aug',
+        '--augmentation',
+        dest='augmentation',
+        action='store_true',
+        help='if True, activate data augmentation while training',
+    )
+    parser.set_defaults(augmentation=False)
 
 
 def add_optimizing_args(parser):
