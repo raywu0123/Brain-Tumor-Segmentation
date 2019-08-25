@@ -22,5 +22,4 @@ class GetClassWeights:
             out=np.ones(channel_num),
             where=cls.class_ratio != 0,
         )
-        weights *= channel_num / weights.sum()
         return weights
