@@ -117,7 +117,7 @@ class StructSegGenerator(DataGeneratorBase):
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
-        ), dtype=bool)
+        ), dtype=np.uint8)
         batch_label[:, 0] = 1
 
         affines = []
@@ -130,7 +130,7 @@ class StructSegGenerator(DataGeneratorBase):
                 volume, label, affine = self._preload_get_image_and_label(data_id)
 
             batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']]
-            batch_label[idx, :, :len(volume)] = label[:, :self.data_format['depth']]
+            batch_label[idx, :len(volume)] = label[:self.data_format['depth']]
             affines.append(affine)
 
         return {

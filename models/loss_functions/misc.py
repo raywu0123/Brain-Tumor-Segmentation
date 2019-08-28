@@ -20,11 +20,9 @@ def ce_minus_log_dice(pred: torch.Tensor, tar: np.array, dice_type: str = 'my'):
 
 
 def weighted_cross_entropy(output: torch.Tensor, target: np.array):
-    assert(output.shape == target.shape)
-
-    weights = GetClassWeights()(target)
+    weights = GetClassWeights()(target, class_num=output.shape[1])
     weights = get_tensor_from_array(weights)
-    target = get_tensor_from_array(target)
+    target = get_tensor_from_array(target).long()
 
     # target = target.transpose(1, -1)
     # output = output.transpose(1, -1)

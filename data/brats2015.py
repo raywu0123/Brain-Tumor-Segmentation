@@ -123,7 +123,7 @@ class Brats2015DataGenerator(DataGeneratorBase):
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
-        ), dtype=bool)
+        ), dtype=np.uint8)
 
         for idx, data_id in enumerate(data_ids):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)

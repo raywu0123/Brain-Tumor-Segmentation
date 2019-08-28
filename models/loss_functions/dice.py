@@ -37,7 +37,7 @@ def generalized_soft_dice_score(pred: torch.Tensor, onehot_tar: np.array):
         raise ValueError(f'Number of channels should be greater than 1, '
                          f'got data with shape {pred.shape}')
 
-    class_weights = GetClassWeights()(onehot_tar) ** 2
+    class_weights = GetClassWeights()(onehot_tar, class_num=pred.shape[1]) ** 2
     class_weights = get_tensor_from_array(class_weights)
     onehot_tar = get_tensor_from_array(onehot_tar)
 
