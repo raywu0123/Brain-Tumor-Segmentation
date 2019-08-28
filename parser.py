@@ -94,7 +94,7 @@ def add_training_args(parser):
         '-cg',
         '--clip_grad',
         type=float,
-        default=0.,
+        default=0.5,
         help='The gradient norm will be clipped by this param if it is greater than 0.'
     )
     parser.add_argument(

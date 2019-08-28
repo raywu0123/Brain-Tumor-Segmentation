@@ -19,7 +19,10 @@ def co_shuffle(batch_data, batch_label):
     return batch_data, batch_label
 
 
-def get_tensor_from_array(array):
+def get_tensor_from_array(array: np.array):
+    if array.dtype == np.bool:
+        array = array.astype(np.uint8)
+
     tensor = torch.Tensor(array)
     if torch.cuda.is_available():
         tensor = tensor.cuda()

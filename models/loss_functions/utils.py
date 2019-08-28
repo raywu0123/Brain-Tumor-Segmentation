@@ -3,7 +3,7 @@ import numpy as np
 
 class GetClassWeights:
 
-    decay_rate = 0.9
+    decay_rate = 0.5
     class_ratio = None
 
     @classmethod
@@ -13,7 +13,7 @@ class GetClassWeights:
             cls.class_ratio = np.zeros([channel_num], dtype=float)
 
         cur_class_ratio = np.swapaxes(target, 0, 1).reshape(channel_num, -1).mean(axis=-1)
-        cur_class_ratio /= np.sum(cur_class_ratio)
+        # cur_class_ratio /= np.sum(cur_class_ratio)
 
         cls.class_ratio = cls.class_ratio * cls.decay_rate + (1 - cls.decay_rate) * cur_class_ratio
 

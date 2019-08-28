@@ -14,7 +14,8 @@ class VolumeAugmentor(AugmentorBase):
             'depth': data_format['height'],
         }, **kwargs)
 
-    def _single_transform(self, volume, label, augmentor, data_depth):
+    @staticmethod
+    def _single_transform(volume, label, augmentor, data_depth):
         volume_2d = get_2d_from_3d(volume)
         label_2d = get_2d_from_3d(label)
         augmented_volume_2d, augmented_label_2d = \
@@ -31,6 +32,7 @@ class VolumeAugmentor(AugmentorBase):
         if label.ndim != 5:
             raise ValueError(f'batch_label is not a volume.')
 
+        label = label.astype(float)
         augmented_volume, augmented_label = self._single_transform(
             volume,
             label,
