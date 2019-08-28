@@ -31,7 +31,7 @@ def cross_entropy(prob_pred, tar_ids):
         axis=1,
     )  # (N, 1, ...)
     selected_weights = weights[tar_ids]  # (N, ...)
-    ce = -selected_weights * np.log(np.squeeze(selected_pred, axis=1) + 1e-8)  # (N, ...)
+    ce = -selected_weights * np.log(np.squeeze(selected_pred, axis=1) + epsilon)  # (N, ...)
     ce = np.mean(ce)
     return ce
 
