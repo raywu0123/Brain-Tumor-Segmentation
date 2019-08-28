@@ -67,7 +67,10 @@ def crop_or_pad_single_dim(image, dim, target_len):
 
 
 def crop_or_pad_to_shape(image, target_shape):
-    assert(image.ndim == len(target_shape))
+    if image.ndim != len(target_shape):
+        raise ValueError(
+            f'Incompatible shapes: image: {image.shape}, target_shape: {target_shape}'
+        )
     target_shape = np.array(target_shape)
     for i_dim in range(image.ndim):
         image = crop_or_pad_single_dim(image, i_dim, target_shape[i_dim])
