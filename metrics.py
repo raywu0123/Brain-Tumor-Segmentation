@@ -2,7 +2,7 @@ import numpy as np
 from medpy import metric as medmetric
 from functools import partial
 
-from data.utils import to_one_hot_label
+from utils import to_one_hot_label
 from utils import epsilon
 from models.loss_functions.utils import GetClassWeights
 

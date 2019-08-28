@@ -27,10 +27,10 @@ class VolumeAugmentor(AugmentorBase):
 
     def co_transform(self, volume, label, **kwargs):
         if volume.ndim != 5:
-            raise ValueError(f'batch_data is not a volume.')
+            raise ValueError(f'batch_data is not a valid volume. shape: {volume.shape}')
 
         if label.ndim != 4:
-            raise ValueError(f'batch_label is not a volume.')
+            raise ValueError(f'batch_label is not a valid label. shape: {label.shape}')
 
         label = label.astype(float)
         augmented_volume, augmented_label = self._single_transform(
@@ -51,5 +51,5 @@ class VolumeAugmentor(AugmentorBase):
         )
 
         augmented_volume = augmented_volume.transpose([0, 1, 3, 2, 4])
-        augmented_label = augmented_label.transpose([0, 2, 1, 4])
+        augmented_label = augmented_label.transpose([0, 2, 1, 3])
         return augmented_volume, augmented_label

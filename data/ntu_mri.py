@@ -8,7 +8,7 @@ np.random.seed = 0
 
 from .base import DataGeneratorBase
 from .data_provider_base import DataProviderBase
-from .utils import strip_file_extension
+from utils import strip_file_extension
 
 from dotenv import load_dotenv
 

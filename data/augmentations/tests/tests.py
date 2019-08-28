@@ -21,8 +21,14 @@ class AugmentationTestCase(TestCase):
             data_format['height'],
             data_format['width'],
         ]
+        label_shape = [
+            1,
+            data_format['depth'],
+            data_format['height'],
+            data_format['width'],
+        ]
         self.volume = np.random.random(data_shape)
-        self.label = np.random.random(data_shape)
+        self.label = np.random.random(label_shape)
         self.identity_augmentor = VolumeAugmentor(data_format=data_format, mode='identity')
         self.nontrivial_augmentor = VolumeAugmentor(data_format=data_format)
 
