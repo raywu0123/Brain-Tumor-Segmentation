@@ -11,12 +11,11 @@ def normalize_batch_image(batch_image):
     return batch_image
 
 
-def co_shuffle(batch_data, batch_label):
-    assert(len(batch_data) == len(batch_label))
-    p = np.random.permutation(len(batch_data))
-    batch_data = batch_data[p]
-    batch_label = batch_label[p]
-    return batch_data, batch_label
+def co_shuffle(*args):
+    for item in args[1:]:
+        assert len(item) == len(args[0])
+    p = np.random.permutation(len(args[0]))
+    return (item[p] for item in args)
 
 
 def get_tensor_from_array(array: np.array):

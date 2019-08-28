@@ -17,15 +17,21 @@ class TwoDimBatchSampler(BatchSamplerBase):
         label = batch_data['label']
         two_dim_volume = get_2d_from_3d(volume)
         two_dim_label = get_2d_from_3d(label)
+
+        position = np.arange(len(two_dim_volume)) / len(two_dim_volume)
         if training:
-            two_dim_volume, two_dim_label = co_shuffle(two_dim_volume, two_dim_label)
+            two_dim_volume, two_dim_label, position =\
+                co_shuffle(two_dim_volume, two_dim_label, position)
 
         feedable_data_list = []
         feedable_label_list = []
         num_batch = ceil(len(two_dim_volume) / batch_size)
         for i_batch in range(num_batch):
             end_idx = min(len(two_dim_volume), (i_batch + 1) * batch_size)
-            feedable_data_list.append(two_dim_volume[i_batch * batch_size: end_idx])
+            feedable_data_list.append({
+                'slice': two_dim_volume[i_batch * batch_size: end_idx],
+                'position': position[i_batch * batch_size: end_idx],
+            })
             feedable_label_list.append(two_dim_label[i_batch * batch_size: end_idx])
 
         return feedable_data_list, feedable_label_list
