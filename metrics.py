@@ -4,6 +4,7 @@ from functools import partial
 
 from data.utils import to_one_hot_label
 from utils import epsilon
+from models.loss_functions.utils import GetClassWeights
 
 
 def hard_max(x):
@@ -26,14 +27,7 @@ def cross_entropy(prob_pred, tar):
     if not ((tar == 0) | (tar == 1)).all():
         raise ValueError('Target data should be binary.')
 
-    channel_num = tar.shape[1]
-    temp = np.swapaxes(tar, 0, 1).reshape(channel_num, -1)
-    weights = np.divide(
-        1., np.mean(temp, axis=1),
-        out=np.ones(channel_num),
-        where=np.mean(temp, axis=1) != 0,
-    )
-    weights *= channel_num / np.sum(weights)
+    weights = GetClassWeights()(tar)
 
     prob_pred = np.transpose(prob_pred, axes=[0, 4, 2, 3, 1])
     tar = np.transpose(tar, axes=[0, 4, 2, 3, 1])
@@ -217,11 +211,21 @@ class StructSegHaNMetric(MetricBase):
         self.tar = tar[:, 1:]
 
         soft_dice_metrics = {
-            f'soft_dice_{metric_name}': partial(self.one_class_metric_func, soft_dice, class_idx)
+            f'soft_dice_{metric_name}': partial(
+                self.one_class_metric_func,
+                soft_dice,
+                self.prob_pred,
+                class_idx,
+            )
             for class_idx, metric_name in enumerate(self.class_weights.keys())
         }
         hard_dice_metrics = {
-            f'hard_dice_{metric_name}': partial(self.one_class_metric_func, medmetric.dc, class_idx)
+            f'hard_dice_{metric_name}': partial(
+                self.one_class_metric_func,
+                medmetric.dc,
+                self.pred,
+                class_idx,
+            )
             for class_idx, metric_name in enumerate(self.class_weights.keys())
         }
         self.do_all_metrics = {
@@ -230,8 +234,8 @@ class StructSegHaNMetric(MetricBase):
             'crossentropy': self.cross_entropy,
         }
 
-    def one_class_metric_func(self, metric_func, class_idx):
-        return volumewise_mean_score(metric_func, self.pred[:, class_idx], self.tar[:, class_idx])
+    def one_class_metric_func(self, metric_func, pred, class_idx):
+        return volumewise_mean_score(metric_func, pred[:, class_idx], self.tar[:, class_idx])
 
     def cross_entropy(self):
         return cross_entropy(self.prob_pred_with_background, self.tar_with_background)
