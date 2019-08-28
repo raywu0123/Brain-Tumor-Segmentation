@@ -12,6 +12,12 @@ class DataGeneratorBase(ABC):
         self.current_index = 0
 
     def __call__(self, batch_size: int) -> dict:
+        """
+        :param batch_size:
+        :return: dict with data and label,
+        data['volume']: shape(N, C, D, H, W)
+        data['label']: shape(N, D, H, W) with integer class labels
+        """
         if self.random:
             selected_data_ids = np.random.choice(self.data_ids, batch_size)
         else:

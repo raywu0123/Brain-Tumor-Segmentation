@@ -29,7 +29,7 @@ class VolumeAugmentor(AugmentorBase):
         if volume.ndim != 5:
             raise ValueError(f'batch_data is not a volume.')
 
-        if label.ndim != 5:
+        if label.ndim != 4:
             raise ValueError(f'batch_label is not a volume.')
 
         label = label.astype(float)
@@ -41,7 +41,7 @@ class VolumeAugmentor(AugmentorBase):
         )
 
         augmented_volume = augmented_volume.transpose([0, 1, 3, 2, 4])
-        augmented_label = augmented_label.transpose([0, 1, 3, 2, 4])
+        augmented_label = augmented_label.transpose([0, 2, 1, 3])
 
         augmented_volume, augmented_label = self._single_transform(
             augmented_volume,
@@ -51,5 +51,5 @@ class VolumeAugmentor(AugmentorBase):
         )
 
         augmented_volume = augmented_volume.transpose([0, 1, 3, 2, 4])
-        augmented_label = augmented_label.transpose([0, 1, 3, 2, 4])
+        augmented_label = augmented_label.transpose([0, 2, 1, 4])
         return augmented_volume, augmented_label

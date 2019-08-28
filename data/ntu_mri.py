@@ -8,7 +8,7 @@ np.random.seed = 0
 
 from .base import DataGeneratorBase
 from .data_provider_base import DataProviderBase
-from .utils import to_one_hot_label, strip_file_extension
+from .utils import strip_file_extension
 
 from dotenv import load_dotenv
 
@@ -101,7 +101,6 @@ class NtuDataGenerator(DataGeneratorBase):
         ))
         batch_label = np.empty((
             len(data_ids),
-            self.data_format['class_num'],
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
@@ -135,7 +134,6 @@ class NtuDataGenerator(DataGeneratorBase):
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
             label = np.transpose(label, (2, 0, 1))
-            label = to_one_hot_label(label, self.data_format['class_num'])
         else:
             label = None
 
