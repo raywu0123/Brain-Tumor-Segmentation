@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import numpy as np
 
 from ..utils import get_tensor_from_array
@@ -6,7 +7,8 @@ from utils import epsilon
 from .utils import GetClassWeights
 
 
-def naive_soft_dice_score(pred: torch.Tensor, onehot_tar: np.array):
+def naive_soft_dice_score(logits: torch.Tensor, onehot_tar: np.array):
+    pred = F.softmax(logits, dim=1)
     if not pred.shape == onehot_tar.shape:
         raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {onehot_tar.shape}')
     if not pred.shape[1] > 1:
@@ -30,14 +32,15 @@ def naive_soft_dice_score(pred: torch.Tensor, onehot_tar: np.array):
     return dice_score, {'soft_dice': dice_score.item()}
 
 
-def generalized_soft_dice_score(pred: torch.Tensor, onehot_tar: np.array):
+def generalized_soft_dice_score(logits: torch.Tensor, onehot_tar: np.array):
+    pred = F.softmax(logits, dim=1)
     if not pred.shape == onehot_tar.shape:
         raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {onehot_tar.shape}')
     if not pred.shape[1] > 1:
         raise ValueError(f'Number of channels should be greater than 1, '
                          f'got data with shape {pred.shape}')
 
-    class_weights = GetClassWeights()(onehot_tar, class_num=pred.shape[1]) ** 2
+    class_weights = GetClassWeights()(onehot_tar, onehot=True) ** 2
     class_weights = get_tensor_from_array(class_weights)
     onehot_tar = get_tensor_from_array(onehot_tar)
 
@@ -56,7 +59,8 @@ def generalized_soft_dice_score(pred: torch.Tensor, onehot_tar: np.array):
     return dice_score, {'soft_dice': dice_score.item()}
 
 
-def my_soft_dice_score(pred: torch.Tensor, onehot_tar: np.array):
+def my_soft_dice_score(logits: torch.Tensor, onehot_tar: np.array):
+    pred = F.softmax(logits, dim=1)
     if not pred.shape == onehot_tar.shape:
         raise ValueError(f'Shape mismatch in pred and tar, got {pred.shape} and {onehot_tar.shape}')
     if not pred.shape[1] > 1:

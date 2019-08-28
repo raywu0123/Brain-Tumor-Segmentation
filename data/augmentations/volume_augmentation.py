@@ -32,7 +32,6 @@ class VolumeAugmentor(AugmentorBase):
         if label.ndim != 4:
             raise ValueError(f'batch_label is not a valid label. shape: {label.shape}')
 
-        label = label.astype(float)
         augmented_volume, augmented_label = self._single_transform(
             volume,
             label,

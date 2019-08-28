@@ -51,7 +51,7 @@ def match_kwargs(func, **kwargs):
 
 def to_one_hot_label(label, class_num):
     categorical_label = to_categorical(label, class_num, dtype=np.bool)
-    categorical_label = np.moveaxis(categorical_label, -1, 0)
+    categorical_label = np.moveaxis(categorical_label, -1, 1)
     return categorical_label
 
 

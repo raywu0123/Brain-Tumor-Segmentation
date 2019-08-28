@@ -76,5 +76,8 @@ class PytorchModelBase(ModelBase, nn.Module):
         batch_data_list, _ = self.batch_sampler.convert_to_feedable(
             test_data, training=False, **kwargs
         )
-        preds = [self.forward(batch_data).cpu().data.numpy() for batch_data in batch_data_list]
+        preds = [
+            nn.functional.softmax(self.forward(batch_data), dim=1).cpu().data.numpy()
+            for batch_data in batch_data_list
+        ]
         return self.batch_sampler.reassemble(preds, test_data)

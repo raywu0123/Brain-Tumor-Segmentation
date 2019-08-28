@@ -85,5 +85,4 @@ class ToyModel(PytorchModelBase):
             x = F.relu(x)
             x = deconv(x)
 
-        x = F.softmax(x, dim=1)
         return x

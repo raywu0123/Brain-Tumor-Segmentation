@@ -8,19 +8,19 @@ from .utils import GetClassWeights
 from utils import to_one_hot_label
 
 
-def ce_minus_log_dice(pred: torch.Tensor, tar: np.array, dice_type: str = 'my'):
-    crossentropy_loss, log_1 = weighted_cross_entropy(pred, tar)
+def ce_minus_log_dice(logits: torch.Tensor, tar: np.array, dice_type: str = 'my'):
+    crossentropy_loss, log_1 = weighted_cross_entropy(logits, tar)
 
     dice_fn = dice_score_hub[dice_type]
-    onehot_tar = to_one_hot_label(tar, class_num=pred.shape[1])
-    dice_score, log_2 = dice_fn(pred, onehot_tar)
+    onehot_tar = to_one_hot_label(tar, class_num=logits.shape[1])
+    dice_score, log_2 = dice_fn(logits, onehot_tar)
 
     total_loss = crossentropy_loss - torch.log(dice_score)
     return total_loss, {**log_1, **log_2}
 
 
-def weighted_cross_entropy(output: torch.Tensor, target: np.array):
-    weights = GetClassWeights()(target, class_num=output.shape[1])
+def weighted_cross_entropy(logits: torch.Tensor, target: np.array):
+    weights = GetClassWeights()(target, class_num=logits.shape[1])
     weights = get_tensor_from_array(weights)
     target = get_tensor_from_array(target).long()
 
@@ -29,12 +29,12 @@ def weighted_cross_entropy(output: torch.Tensor, target: np.array):
     # loss = target * weights * torch.log(output + epsilon)
     # loss = -torch.mean(torch.sum(loss, dim=-1))
 
-    loss = nn.CrossEntropyLoss(weight=weights)(output, target)
+    loss = nn.CrossEntropyLoss(weight=weights)(logits, target)
     return loss, {'crossentropy_loss': loss.item()}
 
 
-def minus_dice(pred: torch.Tensor, tar: np.array, dice_type: str = 'my'):
-    onehot_tar = to_one_hot_label(tar, class_num=pred.shape[1])
+def minus_dice(logits: torch.Tensor, tar: np.array, dice_type: str = 'my'):
+    onehot_tar = to_one_hot_label(tar, class_num=logits.shape[1])
     dice_fn = dice_score_hub[dice_type]
-    dice_score, log = dice_fn(pred, onehot_tar)
+    dice_score, log = dice_fn(logits, onehot_tar)
     return -dice_score, log
