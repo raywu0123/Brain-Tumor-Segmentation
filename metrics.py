@@ -2,7 +2,7 @@ import numpy as np
 from medpy import metric as medmetric
 from functools import partial
 
-from data.utils import to_one_hot_label
+from utils import to_one_hot_label
 from utils import epsilon
 from models.loss_functions.utils import GetClassWeights
 
@@ -10,7 +10,6 @@ from models.loss_functions.utils import GetClassWeights
 def hard_max(x):
     index_x = np.argmax(x, axis=1)
     categorical_x = to_one_hot_label(index_x, class_num=x.shape[1])
-    categorical_x = np.moveaxis(categorical_x, 0, 1)
     return categorical_x
 
 
@@ -23,16 +22,17 @@ def soft_dice(prob_pred, tar):
     return dice_loss
 
 
-def cross_entropy(prob_pred, tar):
-    if not ((tar == 0) | (tar == 1)).all():
-        raise ValueError('Target data should be binary.')
+def cross_entropy(prob_pred, tar_ids):
+    weights = GetClassWeights()(tar_ids, class_num=prob_pred.shape[1])
 
-    weights = GetClassWeights()(tar)
-
-    prob_pred = np.transpose(prob_pred, axes=[0, 4, 2, 3, 1])
-    tar = np.transpose(tar, axes=[0, 4, 2, 3, 1])
-    ce = tar * weights * np.log(prob_pred + epsilon)
-    ce = -np.mean(np.sum(ce, axis=-1))
+    selected_pred = np.take_along_axis(
+        prob_pred,  # (N, C, ...)
+        tar_ids[:, np.newaxis],  # (N, 1, ...)
+        axis=1,
+    )  # (N, 1, ...)
+    selected_weights = weights[tar_ids]  # (N, ...)
+    ce = -selected_weights * np.log(np.squeeze(selected_pred, axis=1) + epsilon)  # (N, ...)
+    ce = np.mean(ce)
     return ce
 
 
@@ -68,11 +68,8 @@ class MetricBase:
 
 
 class NTUMetric(MetricBase):
-    def __init__(
-            self,
-            pred,
-            tar,
-    ):
+    def __init__(self, pred, tar):
+        tar = to_one_hot_label(tar, pred.shape[1])
         super().__init__(pred, tar)
 
         # Strip background
@@ -102,7 +99,9 @@ class NTUMetric(MetricBase):
 
 class BRATSMetric(MetricBase):
     def __init__(self, prob_pred, tar):
+        tar = to_one_hot_label(tar, prob_pred.shape[1])
         super().__init__(prob_pred, tar)
+
         self.prob_pred_complete = \
             prob_pred[:, 1] + prob_pred[:, 2] + prob_pred[:, 3] + prob_pred[:, 4]
         self.prob_pred_core = prob_pred[:, 1] + prob_pred[:, 3] + prob_pred[:, 4]
@@ -200,12 +199,13 @@ class StructSegHaNMetric(MetricBase):
     }
 
     def __init__(self, pred, tar):
+        self.tar_with_background = tar
+        tar = to_one_hot_label(tar, pred.shape[1])
         super().__init__(pred, tar)
 
-        # Strip background
         self.prob_pred_with_background = pred
-        self.tar_with_background = tar
 
+        # Strip background
         self.prob_pred = pred[:, 1:]
         self.pred = hard_max(pred)[:, 1:]
         self.tar = tar[:, 1:]

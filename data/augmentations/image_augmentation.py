@@ -36,7 +36,6 @@ class ImageAugmentor(AugmentorBase):
 
     def _albumentations_transform(self, batch_image: np.array, batch_label: np.array):
         batch_image = np.transpose(batch_image, (0, 2, 3, 1))
-        batch_label = np.transpose(batch_label, (0, 2, 3, 1))
 
         data_dict = {'image': batch_image[0], 'mask': batch_label[0]}
         header_dict = {}
@@ -60,7 +59,6 @@ class ImageAugmentor(AugmentorBase):
         transformed_image = np.asarray(transformed_image)
         transformed_label = np.asarray(transformed_label)
         transformed_image = np.transpose(transformed_image, (0, 3, 1, 2))
-        transformed_label = np.transpose(transformed_label, (0, 3, 1, 2))
         return transformed_image, transformed_label
 
     @staticmethod

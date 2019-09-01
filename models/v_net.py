@@ -71,7 +71,6 @@ class VNet(PytorchModelBase):
             x = u(x, x_down)
 
         x = self.output_layer(x)
-        x = F.softmax(x, dim=1)
         return x
 
 

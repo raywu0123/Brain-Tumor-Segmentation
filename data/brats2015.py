@@ -6,7 +6,6 @@ np.random.seed = 0
 
 from .data_provider_base import DataProviderBase
 from .base import DataGeneratorBase
-from .utils import to_one_hot_label
 from metrics import BRATSMetric
 
 from dotenv import load_dotenv
@@ -95,7 +94,6 @@ class Brats2015DataGenerator(DataGeneratorBase):
         image = [self._get_image_from_folder(data_id, base) for base in self.modal_bases]
         image = np.asarray(image)
         label = self._get_image_from_folder(data_id, label_base)
-        label = to_one_hot_label(label, self.data_format['class_num'])
         return image, label
 
     @staticmethod
@@ -122,11 +120,10 @@ class Brats2015DataGenerator(DataGeneratorBase):
         ))
         batch_label = np.empty((
             len(data_ids),
-            self.data_format['class_num'],
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
-        ), dtype=bool)
+        ), dtype=np.uint8)
 
         for idx, data_id in enumerate(data_ids):
             batch_volume[idx], batch_label[idx] = self._get_image_and_label(data_id)

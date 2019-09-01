@@ -64,7 +64,6 @@ class UNet(PytorchModelBase):
         for x_down, u in zip(x_out[::-1], self.up_layers):
             x = u(x, x_down)
         x = self.out_conv(x)
-        x = F.softmax(x, dim=1)
         return x
 
 

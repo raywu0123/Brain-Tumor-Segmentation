@@ -9,7 +9,7 @@ from .utils import flatten
 
 class UniformPatch3DBatchSampler(BatchSamplerBase):
 
-    patch_size = np.array((64, 64, 64))
+    patch_size = np.array((152, 128, 128))
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -34,7 +34,7 @@ class UniformPatch3DBatchSampler(BatchSamplerBase):
 
     def _sample_by_batch_lists(self, batch_volume, batch_label, batch_indexes):
         batch_patch_volume = np.zeros([len(batch_indexes), batch_volume.shape[1], *self.patch_size])
-        batch_patch_label = np.zeros([len(batch_indexes), batch_label.shape[1], *self.patch_size])
+        batch_patch_label = np.zeros([len(batch_indexes), *self.patch_size], dtype=np.uint8)
 
         for idx, index in enumerate(batch_indexes):
             batch_patch_volume[idx] = self._sample_by_index(batch_volume, index)
@@ -43,22 +43,33 @@ class UniformPatch3DBatchSampler(BatchSamplerBase):
         return batch_patch_volume, batch_patch_label
 
     def _sample_by_index(self, batch_data, index_list):
-        patch = batch_data[
-            index_list[0], :,
-            index_list[1]: index_list[1] + self.patch_size[0],
-            index_list[2]: index_list[2] + self.patch_size[1],
-            index_list[3]: index_list[3] + self.patch_size[2],
-        ]
-        patch = crop_or_pad_to_shape(patch, [patch.shape[0], *self.patch_size])
+        if batch_data.ndim == 5:
+            patch = batch_data[
+                index_list[0], :,
+                index_list[1]: index_list[1] + self.patch_size[0],
+                index_list[2]: index_list[2] + self.patch_size[1],
+                index_list[3]: index_list[3] + self.patch_size[2],
+            ]
+            patch = crop_or_pad_to_shape(patch, [patch.shape[0], *self.patch_size])
+        elif batch_data.ndim == 4:
+            patch = batch_data[
+                index_list[0],
+                index_list[1]: index_list[1] + self.patch_size[0],
+                index_list[2]: index_list[2] + self.patch_size[1],
+                index_list[3]: index_list[3] + self.patch_size[2],
+            ]
+            patch = crop_or_pad_to_shape(patch, self.patch_size.tolist())
+        else:
+            raise ValueError(f'Invalid shape {batch_data.shape}')
         return patch
 
     def _generate_index_lists(self, volume_shape, random):
         volume_shape = np.asarray(volume_shape)
         if random:
             num_patches = volume_shape[0] \
-                * ceil(volume_shape[2] / self.patch_size[0]) \
-                * ceil(volume_shape[3] / self.patch_size[1]) \
-                * ceil(volume_shape[4] / self.patch_size[2])
+                * ceil(volume_shape[1] / self.patch_size[0]) \
+                * ceil(volume_shape[2] / self.patch_size[1]) \
+                * ceil(volume_shape[3] / self.patch_size[2])
 
             random_range = np.array([volume_shape[0], *(volume_shape[2:] - self.patch_size)])
             lists = np.floor(np.random.rand(num_patches, 4) * random_range).astype(int)

@@ -7,7 +7,6 @@ np.random.seed = 0
 
 from .base import DataGeneratorBase
 from .data_provider_base import DataProviderBase
-from .utils import to_one_hot_label
 from metrics import StructSegHaNMetric, NTUMetric
 
 from dotenv import load_dotenv
@@ -115,11 +114,10 @@ class StructSegGenerator(DataGeneratorBase):
         ))
         batch_label = np.zeros((
             len(data_ids),
-            self.data_format['class_num'],
             self.data_format['depth'],
             self.data_format['height'],
             self.data_format['width'],
-        ), dtype=bool)
+        ), dtype=np.uint8)
         batch_label[:, 0] = 1
 
         affines = []
@@ -131,12 +129,8 @@ class StructSegGenerator(DataGeneratorBase):
             else:
                 volume, label, affine = self._preload_get_image_and_label(data_id)
 
-            label = to_one_hot_label(
-                label,
-                self.data_format['class_num'],
-            )
             batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']]
-            batch_label[idx, :, :len(volume)] = label[:, :self.data_format['depth']]
+            batch_label[idx, :len(volume)] = label[:self.data_format['depth']]
             affines.append(affine)
 
         return {

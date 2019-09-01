@@ -38,10 +38,7 @@ class PSPNet(PytorchModelBase):
         self.drop_2 = nn.Dropout2d(p=0.15)
 
         n_classes = data_format['class_num']
-        self.final = nn.Sequential(
-            nn.Conv2d(64, n_classes, kernel_size=1),
-            nn.Softmax(dim=1),
-        )
+        self.final = nn.Conv2d(64, n_classes, kernel_size=1)
 
         # self.classifier = nn.Sequential(
         #     nn.Linear(deep_features_size, 256),
