@@ -36,7 +36,7 @@ ModelHub = {
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 20,
+            'batch_size': 2,
         },
     ),
     'u_net_positional': (
@@ -68,6 +68,17 @@ ModelHub = {
             'batch_size': 1,
         },
     ),
+    'v_net_HaN': (
+        partial(
+            VNet,
+            duplication_num=8,
+            dropout_rate=0.1,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 1,
+        },
+    ),
     'v_net_uniform_patch': (
         partial(
             VNet,
@@ -85,7 +96,7 @@ ModelHub = {
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 15,
+            'batch_size': 1,
         },
     ),
     'pspnet_2d_resnet34': (

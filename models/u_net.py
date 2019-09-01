@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 from .base import PytorchModelBase
 from .utils import get_tensor_from_array, normalize_batch_image
@@ -58,11 +59,11 @@ class UNet(PytorchModelBase):
 
         x_out = []
         for down_layer in self.down_layers:
-            x = down_layer(x)
+            x = checkpoint(down_layer, x)
             x_out.append(x)
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up_layers):
-            x = u(x, x_down)
+            x = checkpoint(u, x, x_down)
         x = self.out_conv(x)
         return x
 

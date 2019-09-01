@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 from .base import PytorchModelBase
 from .utils import get_tensor_from_array
@@ -10,14 +11,14 @@ class VNet(PytorchModelBase):
     def __init__(
             self,
             data_format: dict,
-            duplication_num: int = 16,
+            duplication_num: int = 8,
             kernel_size: int = 3,
             conv_time: int = 2,
-            n_layer: int = 4,
             batch_sampler_id='three_dim',
             dropout_rate: float = 0.,
+            n_channels=(1, 1, 2, 8, 32),
             **kwargs,
-        ):
+    ):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
@@ -36,18 +37,29 @@ class VNet(PytorchModelBase):
             kernel_size,
             dropout_rate,
         )
-        for i in range(n_layer):
-            n_channel = (2 ** i) * duplication_num
-            down_conv = DownConv(n_channel, kernel_size, conv_time, dropout_rate)
+        for input_channel, output_channel in zip(n_channels[:-1], n_channels[1:]):
+            down_conv = DownConv(
+                input_channel=input_channel * duplication_num,
+                output_channel=output_channel * duplication_num,
+                kernel_size=kernel_size,
+                conv_time=conv_time,
+                dropout_rate=dropout_rate,
+            )
             self.down.append(down_conv)
 
-        for i in range(n_layer - 1):
-            n_channel = (2 ** i) * duplication_num
-            up_conv = UpConv(n_channel * 2, n_channel, kernel_size, conv_time, dropout_rate)
+        for x1_channel, x2_channel in zip(n_channels[1: -1], n_channels[:-2]):
+            up_conv = UpConv(
+                x1_channel=x1_channel * duplication_num,
+                x2_channel=x2_channel * duplication_num,
+                kernel_size=kernel_size,
+                conv_time=conv_time,
+                dropout_rate=dropout_rate,
+            )
             self.up.append(up_conv)
 
-        n_channel = (2 ** (n_layer - 1)) * duplication_num
-        up_conv = UpConv(n_channel * 2, n_channel, kernel_size, conv_time, dropout_rate)
+        x1_channel = n_channels[-1] * duplication_num
+        x2_channel = n_channels[-2] * duplication_num
+        up_conv = UpConv(x1_channel, x2_channel, kernel_size, conv_time, dropout_rate)
         self.up.append(up_conv)
         self.output_layer = OutLayer(duplication_num, data_format['class_num'])
 
@@ -63,12 +75,12 @@ class VNet(PytorchModelBase):
         x_out.append(x)
 
         for down_layer in self.down:
-            x = down_layer(x)
+            x = checkpoint(down_layer, x)
             x_out.append(x)
 
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up[::-1]):
-            x = u(x, x_down)
+            x = checkpoint(u, x, x_down)
 
         x = self.output_layer(x)
         return x
@@ -81,9 +93,8 @@ class VNet(PytorchModelBase):
 ###########################################################
 class DownConv(nn.Module):
 
-    def __init__(self, input_channel, kernel_size, conv_time, dropout_rate):
+    def __init__(self, input_channel, output_channel, kernel_size, conv_time, dropout_rate):
         super(DownConv, self).__init__()
-        output_channel = input_channel * 2
         self.down_conv = nn.Conv3d(input_channel, output_channel, kernel_size=kernel_size, stride=2)
         self.dropout = nn.Dropout3d(p=dropout_rate)
         self.batch_norm = nn.BatchNorm3d(output_channel)
@@ -94,7 +105,7 @@ class DownConv(nn.Module):
         x = self.dropout(x)
         if self.dropout.p == 0:
             x = self.batch_norm(x)
-        x = F.relu(x)
+        x = F.relu(x, inplace=True)
         x = self.conv_N_time(x)
         return x
 
@@ -121,7 +132,7 @@ class UpConv(nn.Module):
         if self.dropout.p == 0:
             x1 = self.batch_norm(x1)
 
-        x1 = F.relu(x1)
+        x1 = F.relu(x1, inplace=True)
         if x1.shape != x2.shape:
             # this case will only happen when
             # x1 [N, C, D-1, H-1, W-1]
@@ -169,7 +180,7 @@ class ConvNTimes(nn.Module):
             x = self.dropout(x)
             if self.dropout.p == 0:
                 x = batchnorm(x)
-            x = F.relu(x)
+            x = F.relu(x, inplace=True)
         return x
 
 
@@ -196,7 +207,7 @@ class Duplicate(nn.Module):
         x = self.dropout(x)
         if self.dropout.p == 0:
             x = self.batch_norm(x)
-        x = F.relu(x)
+        x = F.relu(x, inplace=True)
         return x
 
 
