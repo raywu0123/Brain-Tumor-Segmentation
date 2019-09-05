@@ -11,7 +11,7 @@ class UNet(PytorchModelBase):
     def __init__(
         self,
         data_format: dict,
-        batch_sampler_id: str = 'two_dim',
+        batch_sampler_id: str = 'anisotropic_two_dim',
         floor_num: int = 4,
         kernel_size: int = 3,
         channel_num: int = 64,
@@ -127,7 +127,7 @@ class UpConv(nn.Module):
         x_down = self.conv_transpose(x_down)
         diff_x = x_up.size()[2] - x_down.size()[2]
         diff_y = x_up.size()[3] - x_down.size()[3]
-        x_down = F.pad(x_down, (0, diff_x, 0, diff_y))
+        x_down = F.pad(x_down, (0, diff_y, 0, diff_x))
         x = torch.cat([x_down, x_up], dim=1)
         x = self.conv(x)
         return x

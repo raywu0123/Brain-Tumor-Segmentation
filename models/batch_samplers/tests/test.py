@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from ..two_dim import TwoDimBatchSampler
+from ..two_dim import TwoDimBatchSampler, AnisotropicTwoDimBatchSampler
 from ..uniform_patch3d import UniformPatch3DBatchSampler
 from ..center_patch3d import CenterPatch3DBatchSampler
 
@@ -21,6 +21,15 @@ class TwoDimBatchSamplerTestCase(TestCase):
                 'class_num': 2,
             }
         )
+        self.anisotropic_sampler = AnisotropicTwoDimBatchSampler(
+            data_format={
+                'channels': 9,
+                'depth': 8,
+                'height': 7,
+                'width': 6,
+                'class_num': 2,
+            }
+        )
         self.batch_size = 2
 
     def test_reverse(self):
@@ -31,6 +40,17 @@ class TwoDimBatchSamplerTestCase(TestCase):
         reversed_batch_label = self.sampler.reassemble(batch_label_list, batch_data)
         self.assertTrue(
             np.all(reversed_batch_label == self.batch_label)
+        )
+
+    def test_anisotropic_reverse(self):
+        batch_data = {'volume': self.batch_volume, 'label': self.batch_label}
+        _, batch_label_list = self.anisotropic_sampler.convert_to_feedable(
+            batch_data, batch_size=self.batch_size
+        )
+        mock_batch_pred_list = [label[:, np.newaxis] for label in batch_label_list]
+        reversed_batch_label = self.anisotropic_sampler.reassemble(mock_batch_pred_list, batch_data)
+        self.assertTrue(
+            np.all(reversed_batch_label[:, 0] == self.batch_label)
         )
 
 
