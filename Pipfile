@@ -22,6 +22,7 @@ albumentations = "*"
 simpleitk = "*"
 torchvision = "*"
 pandas = "*"
+pynrrd = "*"
 
 [dev-packages]
 
