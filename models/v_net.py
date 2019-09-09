@@ -21,6 +21,7 @@ class VNet(PytorchModelBase):
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            forward_outcome_channels=duplication_num,
             **kwargs,
         )
         # To work properly, kernel_size must be odd
@@ -49,7 +50,6 @@ class VNet(PytorchModelBase):
         n_channel = (2 ** (n_layer - 1)) * duplication_num
         up_conv = UpConv(n_channel * 2, n_channel, kernel_size, conv_time, dropout_rate)
         self.up.append(up_conv)
-        self.output_layer = OutLayer(duplication_num, data_format['class_num'])
 
     def forward(self, x):
         x = get_tensor_from_array(x)
@@ -69,9 +69,13 @@ class VNet(PytorchModelBase):
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up[::-1]):
             x = u(x, x_down)
-
-        x = self.output_layer(x)
         return x
+
+    def build_tails(self, tail_num, input_channels, class_nums):
+        return nn.ModuleList([
+            nn.Conv3d(input_channels, class_num, kernel_size=1)
+            for class_num in class_nums
+        ])
 
 
 ###########################################################
@@ -197,20 +201,4 @@ class Duplicate(nn.Module):
         if self.dropout.p == 0:
             x = self.batch_norm(x)
         x = F.relu(x)
-        return x
-
-
-###########################################################
-#             Out_layer                                   #
-#  input   [batch_num, duplication_num*2,  D,   H,   W]   #
-#  output  [batch_num, 2,                  D,   H,   W]   #
-###########################################################
-class OutLayer(nn.Module):
-
-    def __init__(self, input_channel, class_num):
-        super(OutLayer, self).__init__()
-        self.conv = nn.Conv3d(input_channel, class_num, kernel_size=1)
-
-    def forward(self, x):
-        x = self.conv(x)
         return x

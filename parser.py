@@ -32,6 +32,14 @@ def add_general_args(parser):
         help='The medical-image data provider.',
     )
     parser.add_argument(
+        '-ad',
+        '--auxiliary_data_provider_ids',
+        type=str,
+        nargs='+',
+        default=[],
+        help='Extra data to train alongside with the main data.',
+    )
+    parser.add_argument(
         '-grs',
         '--global_random_seed',
         type=int,

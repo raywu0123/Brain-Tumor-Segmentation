@@ -22,11 +22,12 @@ class UNet(PytorchModelBase):
         super(UNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            forward_outcome_channels=channel_num,
             **kwargs,
         )
         self.use_position = use_position
         self.floor_num = floor_num
-        image_chns, class_num = data_format['channels'], data_format['class_num']
+        image_chns = data_format['channels']
         if use_position:
             image_chns += 1
         self.down_layers = nn.ModuleList()
@@ -43,7 +44,6 @@ class UNet(PytorchModelBase):
             channel_times = 2 ** floor_idx
             u = UpConv(channel_num * 2 * channel_times, kernel_size, conv_times)
             self.up_layers.append(u)
-        self.out_conv = nn.Conv2d(channel_num, class_num, kernel_size=1)
 
     def forward(self, inp):
         inp, pos = inp['slice'], inp['position']
@@ -63,8 +63,13 @@ class UNet(PytorchModelBase):
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up_layers):
             x = u(x, x_down)
-        x = self.out_conv(x)
         return x
+
+    def build_tails(self, tail_num, input_channels, class_nums):
+        return nn.ModuleList([
+            nn.Conv2d(input_channels, class_num, kernel_size=1)
+            for class_num in class_nums
+        ])
 
 
 class ConvNTimes(nn.Module):

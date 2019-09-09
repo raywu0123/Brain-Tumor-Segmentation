@@ -36,16 +36,24 @@ experiment = Experiment(
 
 def flow(
         data_provider,
-        trainer,
+        auxiliary_data_providers,
+        auxiliary_data_provider_ids,
+        trainer: PytorchTrainer,
         fit_hyper_parameters=None,
         **kwargs,
     ):
     if fit_hyper_parameters is None:
         fit_hyper_parameters = {}
 
+    auxiliary_data_generators = [
+        aux_data_provider.get_full_data_generator(**kwargs)
+        for aux_data_provider in auxiliary_data_providers
+    ]
     trainer.fit_generator(
         training_data_generator=data_provider.get_training_data_generator(**kwargs),
         validation_data_generator=data_provider.get_testing_data_generator(**kwargs),
+        auxiliary_data_generators=auxiliary_data_generators,
+        auxiliary_data_provider_ids=auxiliary_data_provider_ids,
         metric=data_provider.metric,
         **fit_hyper_parameters,
     )
@@ -70,12 +78,22 @@ def main():
     data_provider_hub = DataProviderHub()
     get_data_provider, data_provider_parameters = data_provider_hub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
+
+    auxiliary_data_providers = []
+    auxiliary_data_formats = []
+    for data_provider_id in args.auxiliary_data_provider_ids:
+        get_data_provider, data_provider_parameters = data_provider_hub[data_provider_id]
+        aux_data_provider = get_data_provider(data_provider_parameters)
+        auxiliary_data_providers.append(aux_data_provider)
+        auxiliary_data_formats.append(aux_data_provider.data_format)
+
     get_model, fit_hyper_parameters = ModelHub[args.model_id]
     model = get_model(
         data_format=data_provider.data_format,
         loss_function_id=args.loss_function_id,
         clip_grad=args.clip_grad,
         optim_batch_steps=args.optim_batch_steps,
+        auxiliary_data_formats=auxiliary_data_formats,
     )
 
     optimizer_factory = OptimizerFactory()
@@ -98,6 +116,7 @@ def main():
     )
     flow(
         data_provider=data_provider,
+        auxiliary_data_providers=auxiliary_data_providers,
         trainer=trainer,
         fit_hyper_parameters=fit_hyper_parameters,
         **vars(args),

@@ -15,8 +15,7 @@ class DataProviderBase(ABC):
     def get_full_data_generator(self, **kwargs):
         return self._get_data_generator(
             self.train_ids + self.test_ids,
-            augmentation=False,
-            **kwargs
+            **{**kwargs, 'augmentation': False},
         )
 
     def get_testing_data_generator(self, **kwargs):
