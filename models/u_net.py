@@ -78,7 +78,7 @@ class ConvNTimes(nn.Module):
         super(ConvNTimes, self).__init__()
         assert(conv_times > 0)
         self.convs = nn.ModuleList()
-        self.batchnorms = nn.ModuleList()
+        self.norms = nn.ModuleList()
         self.conv_times = conv_times
 
         conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
@@ -88,14 +88,14 @@ class ConvNTimes(nn.Module):
             conv = nn.Conv2d(out_ch, out_ch, kernel_size, padding=kernel_size // 2)
             self.convs.append(conv)
         for _ in range(conv_times):
-            batchnorm = nn.BatchNorm2d(out_ch)
-            self.batchnorms.append(batchnorm)
+            norm = nn.InstanceNorm2d(out_ch)
+            self.norms.append(norm)
 
     def forward(self, x):
-        for conv, batchnorm in zip(self.convs, self.batchnorms):
+        for conv, norm in zip(self.convs, self.norms):
             x = conv(x)
             x = F.relu(x)
-            x = batchnorm(x)
+            x = norm(x)
         return x
 
 

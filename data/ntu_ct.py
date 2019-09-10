@@ -18,7 +18,7 @@ class NtuCtDataProvider(DataProviderBase):
 
     _data_format = {
         "channels": 1,
-        "depth": 180,
+        "depth": 150,
         "height": 512,
         "width": 512,
         "class_num": 22,

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -52,27 +53,48 @@ class PytorchModelBase(ModelBase, nn.Module):
             class_nums=class_nums,
         )
 
-    def fit_generator(self, training_data_generator, optimizer, batch_size, tail_id, **kwargs):
+    def fit_generator(
+            self,
+            training_data_generator,
+            aux_data_generators,
+            optimizer,
+            batch_size,
+            **kwargs,
+    ):
         """
         fit on generator for one single volume
         """
         self.train()
-        data = training_data_generator(batch_size=1)
+        all_data_generators = [training_data_generator] + aux_data_generators
+        all_data = [
+            data_generator(batch_size=1)
+            for data_generator in all_data_generators
+        ]
         # batch_size here stands for number of volumes
         # most devices can only hold one singe volume
+        batch_data_list = []
+        batch_label_list = []
+        tail_id_list = []
+        for tail_id, data in enumerate(all_data):
+            data_list, label_list = self.batch_sampler.convert_to_feedable(
+                data, batch_size, training=True, **kwargs
+            )
+            batch_data_list.extend(data_list)
+            batch_label_list.extend(label_list)
+            tail_id_list.extend([tail_id] * len(data_list))
 
-        batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(
-            data, batch_size, training=True, **kwargs
-        )
-        logs = []
+        logs = [[] for _ in all_data]
 
         self.zero_grad()
-        for batch_data, batch_label in zip(batch_data_list, batch_label_list):
+        sample_batch_order = np.random.permutation(len(batch_data_list))
+        for idx in sample_batch_order:
+            batch_data, batch_label, tail_id = \
+                batch_data_list[idx], batch_label_list[idx], tail_id_list[idx]
             batch_pred = self.forward(batch_data)
             batch_pred = self.tails[tail_id](batch_pred)
             loss, log = self.loss_fn(batch_pred, batch_label)
             loss /= self.optim_batch_steps
-            logs.append(log)
+            logs[tail_id].append(log)
             loss.backward()
 
             if self.clip_grad > 0:
@@ -83,7 +105,8 @@ class PytorchModelBase(ModelBase, nn.Module):
                 optimizer.step()
                 self.zero_grad()
 
-        return summarize_logs(logs)
+        logs = [summarize_logs(log) for log in logs]
+        return logs[0], logs[1:]
 
     def predict(self, test_data, **kwargs):
         """
