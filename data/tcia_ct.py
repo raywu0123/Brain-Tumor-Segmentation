@@ -34,16 +34,24 @@ class TCIACTDataProvider(DataProviderBase):
         :param mode: ['oncologist', 'radiographer', '']
         empty string for mode means both
         """
-        # TODO
-        self.mode = mode
+        if mode == 'oncologist' or mode == 'radiographer':
+            self.modes = [mode]
+        elif mode == '':
+            self.modes = ['oncologist', 'radiographer']
+        else:
+            raise ValueError(f'Unsupported mode {mode}')
 
-        self.train_ids = os.listdir(os.path.join(TEST_DIR, mode))
-        self.train_ids = [os.path.join(TEST_DIR, mode, idx) for idx in self.train_ids]
-        self.test_ids = os.listdir(os.path.join(VAL_DIR, mode))
-        self.test_ids = [os.path.join(VAL_DIR, mode, idx) for idx in self.test_ids]
+        self.train_ids = []
+        self.test_ids = []
+
+        for m in self.modes:
+            train_ids = os.listdir(os.path.join(TEST_DIR, m))
+            self.train_ids.extend([os.path.join(TEST_DIR, m, idx) for idx in train_ids])
+            test_ids = os.listdir(os.path.join(VAL_DIR, m))
+            self.test_ids.extend([os.path.join(VAL_DIR, m, idx) for idx in test_ids])
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
-        return TCIACTGenerator(data_ids, self.data_format, self.mode, **kwargs)
+        return TCIACTGenerator(data_ids, self.data_format, self.modes, **kwargs)
 
     @property
     def data_format(self) -> dict:
