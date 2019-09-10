@@ -85,14 +85,14 @@ class StructSeg2019DataProvider(DataProviderBase):
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
-        return StructSegGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
+        return StructSegDataGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
 
     @property
     def data_format(self) -> dict:
         return self._data_format
 
 
-class StructSegGenerator(DataGeneratorBase):
+class StructSegDataGenerator(DataGeneratorBase):
 
     def __init__(self, data_ids, data_format, data_dir, random=True, preload=False, **kwargs):
         super().__init__(data_ids, data_format, random)

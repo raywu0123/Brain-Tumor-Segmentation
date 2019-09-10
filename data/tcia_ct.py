@@ -19,7 +19,7 @@ TEST_DIR = os.path.join(TCIA_CT_DIR, 'nrrds', 'test')
 VAL_DIR = os.path.join(TCIA_CT_DIR, 'nrrds', 'validation')
 
 
-class TCIACTDataProvider(DataProviderBase):
+class TciaCtDataProvider(DataProviderBase):
 
     _data_format = {
         "channels": 1,
@@ -51,14 +51,14 @@ class TCIACTDataProvider(DataProviderBase):
             self.test_ids.extend([os.path.join(VAL_DIR, m, idx) for idx in test_ids])
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
-        return TCIACTGenerator(data_ids, self.data_format, self.modes, **kwargs)
+        return TciaCtDataGenerator(data_ids, self.data_format, self.modes, **kwargs)
 
     @property
     def data_format(self) -> dict:
         return self._data_format
 
 
-class TCIACTGenerator(DataGeneratorBase):
+class TciaCtDataGenerator(DataGeneratorBase):
 
     def __init__(self, data_ids, data_format, mode, random=True, preload=False, **kwargs):
         super().__init__(data_ids, data_format, random)
