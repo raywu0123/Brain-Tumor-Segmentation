@@ -72,6 +72,12 @@ BRATS2015
 ```
 * The inner structure is same as the original format downloaded from [https://www.smir.ch/BRATS/Start2015]().
 
+### TCIA_CT
+
+* Data from https://github.com/deepmind/tcia-ct-scan-dataset/tree/master/nrrds
+* The corrensponding options for data_provider_id are
+`tciact_oncologist`, `tciact_radiographer`, `tciact` for both
+
 ## Dependencies
 * BrainSuite (optional)
 * python 3.6
