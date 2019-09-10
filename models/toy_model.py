@@ -19,6 +19,7 @@ class ToyModel(PytorchModelBase):
         super(ToyModel, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            forward_outcome_channels=num_units[0],
             **kwargs,
         )
         self.image_chns = data_format['channels']
@@ -47,7 +48,7 @@ class ToyModel(PytorchModelBase):
             self.encoder_convs.append(conv)
             self.encoder_batchnorms.append(batchnorm)
 
-        decoder_num_units = num_units[::-1] + (self.class_num,)
+        decoder_num_units = num_units[::-1]
         self.decoder_deconvs = nn.ModuleList()
         self.decoder_batchnorms = nn.ModuleList()
         img_size = self.image_height // (2 ** len(pooling_layer_num))
@@ -84,5 +85,10 @@ class ToyModel(PytorchModelBase):
             x = batchnorm(x)
             x = F.relu(x)
             x = deconv(x)
-
         return x
+
+    def build_tails(self, tail_num, input_channels, class_nums):
+        return nn.ModuleList([
+            nn.Conv2d(input_channels, class_num, kernel_size=1)
+            for class_num in class_nums
+        ])

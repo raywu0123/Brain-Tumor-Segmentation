@@ -27,7 +27,9 @@ class PytorchModelBase(ModelBase, nn.Module):
             loss_function_id: str,
             data_format: dict,
             clip_grad: float,
-            optim_batch_steps: int
+            optim_batch_steps: int,
+            auxiliary_data_formats: list,
+            forward_outcome_channels: int,
     ):
         nn.Module.__init__(self)
         self.loss_fn = loss_function_hub[loss_function_id]
@@ -39,7 +41,18 @@ class PytorchModelBase(ModelBase, nn.Module):
         self.batch_step_num = 0  # keeps count of how many batches processed
         self.optim_batch_steps = optim_batch_steps  # optimizer steps after this many steps
 
-    def fit_generator(self, training_data_generator, optimizer, batch_size, **kwargs):
+        all_data_formats = [data_format] + auxiliary_data_formats
+        class_nums = [
+            _data_format['class_num']
+            for _data_format in all_data_formats
+        ]
+        self.tails = self.build_tails(
+            tail_num=len(all_data_formats),
+            input_channels=forward_outcome_channels,
+            class_nums=class_nums,
+        )
+
+    def fit_generator(self, training_data_generator, optimizer, batch_size, tail_id, **kwargs):
         """
         fit on generator for one single volume
         """
@@ -56,6 +69,7 @@ class PytorchModelBase(ModelBase, nn.Module):
         self.zero_grad()
         for batch_data, batch_label in zip(batch_data_list, batch_label_list):
             batch_pred = self.forward(batch_data)
+            batch_pred = self.tails[tail_id](batch_pred)
             loss, log = self.loss_fn(batch_pred, batch_label)
             loss /= self.optim_batch_steps
             logs.append(log)
@@ -72,13 +86,23 @@ class PytorchModelBase(ModelBase, nn.Module):
         return summarize_logs(logs)
 
     def predict(self, test_data, **kwargs):
+        """
+        currently only for main data, i.e. tail_id=0
+        """
         self.eval()
         with torch.no_grad():
             batch_data_list, _ = self.batch_sampler.convert_to_feedable(
                 test_data, training=False, **kwargs
             )
             preds = [
-                nn.functional.softmax(self.forward(batch_data), dim=1).cpu().data.numpy()
+                nn.functional.softmax(
+                    self.tails[0](self.forward(batch_data)),
+                    dim=1
+                ).cpu().data.numpy()
                 for batch_data in batch_data_list
             ]
         return self.batch_sampler.reassemble(preds, test_data)
+
+    @abstractmethod
+    def build_tails(self, tail_num, input_channels, class_nums):
+        pass

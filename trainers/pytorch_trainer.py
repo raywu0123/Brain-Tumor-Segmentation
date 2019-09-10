@@ -14,6 +14,7 @@ import pandas as pd
 
 
 from .base import TrainerBase
+from models.base import PytorchModelBase
 from preprocess_tools.image_utils import save_array_to_nii
 
 load_dotenv('./.env')
@@ -24,7 +25,7 @@ class PytorchTrainer(TrainerBase, ABC):
 
     def __init__(
             self,
-            model: torch.nn.Module,
+            model: PytorchModelBase,
             optimizer,
             scheduler,
             dataset_size: int,
@@ -89,15 +90,16 @@ class PytorchTrainer(TrainerBase, ABC):
             self,
             training_data_generator,
             validation_data_generator,
+            auxiliary_data_generators,
+            auxiliary_data_provider_ids,
             metric,
-            **kwargs
+            batch_size,
+            epoch_num,
+            verbose_epoch_num,
+            **kwargs,
     ):
         print(kwargs)
-        batch_size = kwargs['batch_size']
-        epoch_num = kwargs['epoch_num']
         step_num = epoch_num * self.dataset_size
-
-        verbose_epoch_num = kwargs['verbose_epoch_num']
         verbose_step_num = ceil(verbose_epoch_num * self.dataset_size)
 
         if self.profile is not None:
@@ -106,8 +108,20 @@ class PytorchTrainer(TrainerBase, ABC):
 
         for self.i_step in range(self.i_step, self.i_step + step_num):
             log_dict = self.model.fit_generator(
-                training_data_generator, self.opt, batch_size=batch_size
+                training_data_generator,
+                self.opt,
+                batch_size=batch_size,
+                tail_id=0,
             )
+            aux_log_dicts = [
+                self.model.fit_generator(
+                    aux_data_generator,
+                    self.opt,
+                    batch_size=batch_size,
+                    tail_id=tail_id + 1,
+                )
+                for tail_id, aux_data_generator in enumerate(auxiliary_data_generators)
+            ]
             self.scheduler.step()
             # fits on one single volume, one step = one volume
 
@@ -121,6 +135,10 @@ class PytorchTrainer(TrainerBase, ABC):
                     self.comet_experiment.log_metrics(
                         log_dict, prefix='training', step=self.i_step
                     )
+                    for log, name in zip(aux_log_dicts, auxiliary_data_provider_ids):
+                        self.comet_experiment.log_metrics(
+                            log, prefix=f'aux_{name}', step=self.i_step
+                        )
                     self.comet_experiment.log_metrics(
                         metrics, prefix='validation', step=self.i_step
                     )

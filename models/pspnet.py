@@ -25,6 +25,7 @@ class PSPNet(PytorchModelBase):
         super().__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            forward_outcome_channels=64,
             **kwargs,
         )
         self.feats = extractor_hub[backend](data_format['channels'], pretrained)
@@ -36,9 +37,6 @@ class PSPNet(PytorchModelBase):
         self.up_3 = PSPUpsample(64, 64)
 
         self.drop_2 = nn.Dropout2d(p=0.15)
-
-        n_classes = data_format['class_num']
-        self.final = nn.Conv2d(64, n_classes, kernel_size=1)
 
         # self.classifier = nn.Sequential(
         #     nn.Linear(deep_features_size, 256),
@@ -69,6 +67,12 @@ class PSPNet(PytorchModelBase):
         # ).view(-1, class_f.size(1))
         p = self.final(p)
         return p  # , self.classifier(auxiliary)
+
+    def build_tails(self, tail_num, input_channels, class_nums):
+        return nn.ModuleList([
+            nn.Conv2d(input_channels, class_num, kernel_size=1)
+            for class_num in class_nums
+        ])
 
 
 class PSPModule(nn.Module):
