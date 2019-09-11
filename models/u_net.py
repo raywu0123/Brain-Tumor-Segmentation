@@ -97,9 +97,7 @@ class ConvNTimes(nn.Module):
         self.norms = nn.ModuleList()
         self.conv_times = conv_times
 
-        conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
-        self.convs.append(conv)
-
+        self.in_conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
         for _ in range(conv_times - 1):
             conv = nn.Conv2d(out_ch, out_ch, kernel_size, padding=kernel_size // 2)
             self.convs.append(conv)
@@ -108,12 +106,12 @@ class ConvNTimes(nn.Module):
             self.norms.append(norm)
 
     def forward(self, inp):
+        inp = self.in_conv(inp)
         x = inp
         for conv, norm in zip(self.convs, self.norms):
             x = conv(x)
             x = F.relu(x)
             x = norm(x)
-
         x = (x + inp) / 2
         return x
 

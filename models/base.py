@@ -98,7 +98,7 @@ class PytorchModelBase(ModelBase, nn.Module):
         for idx in sample_batch_order:
             batch_data, batch_label, data_idx = \
                 batch_data_list[idx], batch_label_list[idx], data_idx_list[idx]
-            batch_pred = self.forward_head(batch_data)
+            batch_pred = self.forward_head(batch_data, data_idx)
             batch_pred = self.forward(batch_pred)
             batch_pred = self.tails[data_idx](batch_pred)
             loss, log = self.loss_fn(batch_pred, batch_label)
@@ -128,7 +128,7 @@ class PytorchModelBase(ModelBase, nn.Module):
             )
             preds = [
                 nn.functional.softmax(
-                    self.tails[0](self.forward(self.heads[0](batch_data))),
+                    self.tails[0](self.forward(self.forward_head(batch_data, 0))),
                     dim=1
                 ).cpu().data.numpy()
                 for batch_data in batch_data_list

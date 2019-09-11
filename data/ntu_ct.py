@@ -86,6 +86,7 @@ class NtuCtDataGenerator(DataGeneratorBase):
         image_obj = nib.load(img_path)
         affine = image_obj.affine
         image = image_obj.get_fdata()
+        image = np.clip(image, a_min=-1000., a_max=None)
         image = np.transpose(image, (2, 0, 1))
         label_path = os.path.join(self.data_dir, f"{data_id}/label.nii.gz")
 
