@@ -118,7 +118,6 @@ class StructSegDataGenerator(DataGeneratorBase):
             self.data_format['height'],
             self.data_format['width'],
         ), dtype=np.uint8)
-        batch_label[:, 0] = 1
 
         affines = []
         for idx, data_id in enumerate(data_ids):

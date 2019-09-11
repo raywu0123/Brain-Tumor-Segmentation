@@ -57,14 +57,20 @@ class NtuCtDataGenerator(DataGeneratorBase):
             self.data_format['height'],
             self.data_format['width'],
         ), dtype=np.uint8)
-        batch_label[:, 0] = 1
 
         affines = []
         for idx, data_id in enumerate(data_ids):
             volume, label, affine = self._preload_get_image_and_label(data_id)
-
-            batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']]
-            batch_label[idx, :len(volume)] = label[:self.data_format['depth']]
+            batch_volume[idx, :, :volume.shape[-3], :volume.shape[-2], :volume.shape[-1]] = \
+                volume[
+                    :self.data_format['depth'],
+                    :self.data_format['height'],
+                    :self.data_format['width']]
+            batch_label[idx, :volume.shape[-3], :volume.shape[-2], :volume.shape[-1]] = \
+                label[
+                    :self.data_format['depth'],
+                    :self.data_format['height'],
+                    :self.data_format['width']]
             affines.append(affine)
 
         return {
