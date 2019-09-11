@@ -57,14 +57,14 @@ class NtuMriDataProvider(DataProviderBase):
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
 
     def _get_raw_data_generator(self, data_ids, **kwargs):
-        return NtuDataGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
+        return NtuMriDataGenerator(data_ids, self.data_format, data_dir=self.data_dir, **kwargs)
 
     @property
     def data_format(self) -> dict:
         return self._data_format
 
 
-class NtuDataGenerator(DataGeneratorBase):
+class NtuMriDataGenerator(DataGeneratorBase):
 
     valid_diagnosis = {'metastasis', 'meningioma', 'schwannoma', 'pituitary', 'AVM', 'TN'}
 
