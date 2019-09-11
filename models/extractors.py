@@ -420,5 +420,4 @@ extractor_hub = {
     'resnet50': resnet50,
     'resnet101': resnet101,
     'resnet152': resnet152,
-
 }

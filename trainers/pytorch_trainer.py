@@ -98,7 +98,6 @@ class PytorchTrainer(TrainerBase, ABC):
             verbose_epoch_num,
             **kwargs,
     ):
-        print(kwargs)
         step_num = epoch_num * self.dataset_size
         verbose_step_num = ceil(verbose_epoch_num * self.dataset_size)
 

@@ -16,9 +16,11 @@ class ToyModel(PytorchModelBase):
         kernel_size: int = 3,
         **kwargs,
     ):
+        self.kernel_size = kernel_size
         super(ToyModel, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            head_outcome_channels=num_units[0],
             forward_outcome_channels=num_units[0],
             **kwargs,
         )
@@ -27,7 +29,7 @@ class ToyModel(PytorchModelBase):
         self.image_width = data_format['width']
         self.class_num = data_format['class_num']
 
-        encoder_num_units = (self.image_chns,) + num_units
+        encoder_num_units = num_units
         self.encoder_convs = nn.ModuleList()
         self.encoder_batchnorms = nn.ModuleList()
         for idx in range(len(encoder_num_units) - 1):
@@ -72,10 +74,13 @@ class ToyModel(PytorchModelBase):
             self.decoder_deconvs.append(deconv)
             self.decoder_batchnorms.append(batchnorm)
 
-    def forward(self, inp):
+    def forward_head(self, inp, data_idx: int):
         inp = inp['slice']
         x = normalize_batch_image(inp)
         x = get_tensor_from_array(x)
+        return x
+
+    def forward(self, x):
         for conv, batchnorm in zip(self.encoder_convs, self.encoder_batchnorms):
             x = batchnorm(x)
             x = F.relu(x)
@@ -87,7 +92,13 @@ class ToyModel(PytorchModelBase):
             x = deconv(x)
         return x
 
-    def build_tails(self, tail_num, input_channels, class_nums):
+    def build_heads(self, input_channels: list, output_channel: int):
+        return nn.ModuleList(
+            nn.Conv2d(input_channel, output_channel, kernel_size=self.kernel_size)
+            for input_channel in input_channels
+        )
+
+    def build_tails(self, input_channels, class_nums):
         return nn.ModuleList([
             nn.Conv2d(input_channels, class_num, kernel_size=1)
             for class_num in class_nums

@@ -17,7 +17,6 @@ class PSPNet(PytorchModelBase):
             batch_sampler_id='two_dim',
             sizes=(1, 2, 3, 6, 10),
             psp_size=512,
-            # deep_features_size=256,
             backend='resnet34',
             pretrained=False,
             **kwargs,
@@ -25,6 +24,7 @@ class PSPNet(PytorchModelBase):
         super().__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            head_outcome_channels=data_format['channels'],
             forward_outcome_channels=64,
             **kwargs,
         )
@@ -38,16 +38,13 @@ class PSPNet(PytorchModelBase):
 
         self.drop_2 = nn.Dropout2d(p=0.15)
 
-        # self.classifier = nn.Sequential(
-        #     nn.Linear(deep_features_size, 256),
-        #     nn.ReLU(),
-        #     nn.Linear(256, n_classes)
-        # )
+    def forward_head(self, inp, data_idx: int):
+        x = inp['slice']
+        x = get_tensor_from_array(x)
+        x = self.heads[data_idx](x)
+        return x
 
     def forward(self, x):
-        x = x['slice']
-        x = get_tensor_from_array(x)
-
         f, class_f = self.feats(x)
         p = self.psp(f)
         p = self.drop_1(p)
@@ -61,14 +58,16 @@ class PSPNet(PytorchModelBase):
         p = self.up_3(p)
         p = self.drop_2(p)
 
-        # auxiliary = F.adaptive_max_pool2d(
-        #     input=class_f,
-        #     output_size=(1, 1)
-        # ).view(-1, class_f.size(1))
         p = self.final(p)
-        return p  # , self.classifier(auxiliary)
+        return p
 
-    def build_tails(self, tail_num, input_channels, class_nums):
+    def build_heads(self, input_channels: list, output_channel: int):
+        return nn.ModuleList([
+            nn.Conv2d(input_channel, output_channel, kernel_size=3)
+            for input_channel in input_channels
+        ])
+
+    def build_tails(self, input_channels, class_nums):
         return nn.ModuleList([
             nn.Conv2d(input_channels, class_num, kernel_size=1)
             for class_num in class_nums
