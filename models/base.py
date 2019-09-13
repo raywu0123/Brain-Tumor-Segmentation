@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -30,6 +31,7 @@ class PytorchModelBase(ModelBase, nn.Module):
             optim_batch_steps: int,
             auxiliary_data_formats: list,
             forward_outcome_channels: int,
+            head_outcome_channels: int,
     ):
         nn.Module.__init__(self)
         self.loss_fn = loss_function_hub[loss_function_id]
@@ -42,37 +44,66 @@ class PytorchModelBase(ModelBase, nn.Module):
         self.optim_batch_steps = optim_batch_steps  # optimizer steps after this many steps
 
         all_data_formats = [data_format] + auxiliary_data_formats
+        data_channels = [
+            _data_format['channels']
+            for _data_format in all_data_formats
+        ]
         class_nums = [
             _data_format['class_num']
             for _data_format in all_data_formats
         ]
+        self.heads = self.build_heads(
+            input_channels=data_channels,
+            output_channel=head_outcome_channels,
+        )
         self.tails = self.build_tails(
-            tail_num=len(all_data_formats),
             input_channels=forward_outcome_channels,
             class_nums=class_nums,
         )
 
-    def fit_generator(self, training_data_generator, optimizer, batch_size, tail_id, **kwargs):
+    def fit_generator(
+            self,
+            training_data_generator,
+            aux_data_generators,
+            optimizer,
+            batch_size,
+            **kwargs,
+    ):
         """
         fit on generator for one single volume
         """
         self.train()
-        data = training_data_generator(batch_size=1)
+        all_data_generators = [training_data_generator] + aux_data_generators
+        all_data = [
+            data_generator(batch_size=1)
+            for data_generator in all_data_generators
+        ]
         # batch_size here stands for number of volumes
         # most devices can only hold one singe volume
+        batch_data_list = []
+        batch_label_list = []
+        data_idx_list = []
+        for data_idx, data in enumerate(all_data):
+            data_list, label_list = self.batch_sampler.convert_to_feedable(
+                data, batch_size, training=True, **kwargs
+            )
+            batch_data_list.extend(data_list)
+            batch_label_list.extend(label_list)
+            data_idx_list.extend([data_idx] * len(data_list))
 
-        batch_data_list, batch_label_list = self.batch_sampler.convert_to_feedable(
-            data, batch_size, training=True, **kwargs
-        )
-        logs = []
+        logs = [[] for _ in all_data]
 
         self.zero_grad()
-        for batch_data, batch_label in zip(batch_data_list, batch_label_list):
-            batch_pred = self.forward(batch_data)
-            batch_pred = self.tails[tail_id](batch_pred)
+        sample_batch_order = np.random.permutation(len(batch_data_list))
+        for idx in sample_batch_order:
+            batch_data, batch_label, data_idx = \
+                batch_data_list[idx], batch_label_list[idx], data_idx_list[idx]
+            batch_pred = self.forward_head(batch_data, data_idx)
+            batch_pred = self.forward(batch_pred)
+            batch_pred = self.tails[data_idx](batch_pred)
             loss, log = self.loss_fn(batch_pred, batch_label)
             loss /= self.optim_batch_steps
-            logs.append(log)
+            logs[data_idx].append(log)
             loss.backward()
 
             if self.clip_grad > 0:
@@ -83,7 +114,8 @@ class PytorchModelBase(ModelBase, nn.Module):
                 optimizer.step()
                 self.zero_grad()
 
-        return summarize_logs(logs)
+        logs = [summarize_logs(log) for log in logs]
+        return logs[0], logs[1:]
 
     def predict(self, test_data, **kwargs):
         """
@@ -96,7 +128,7 @@ class PytorchModelBase(ModelBase, nn.Module):
             )
             preds = [
                 nn.functional.softmax(
-                    self.tails[0](self.forward(batch_data)),
+                    self.tails[0](self.forward(self.forward_head(batch_data, 0))),
                     dim=1
                 ).cpu().data.numpy()
                 for batch_data in batch_data_list
@@ -104,5 +136,13 @@ class PytorchModelBase(ModelBase, nn.Module):
         return self.batch_sampler.reassemble(preds, test_data)
 
     @abstractmethod
-    def build_tails(self, tail_num, input_channels, class_nums):
+    def forward_head(self, inp, data_idx: int):
+        pass
+
+    @abstractmethod
+    def build_heads(self, input_channels: list, output_channel: int):
+        pass
+
+    @abstractmethod
+    def build_tails(self, input_channels: int, class_nums: list):
         pass

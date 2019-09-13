@@ -17,10 +17,13 @@ class VNet(PytorchModelBase):
             batch_sampler_id='three_dim',
             dropout_rate: float = 0.,
             **kwargs,
-        ):
+    ):
+        self.kernel_size = kernel_size
+        self.dropout_rate = dropout_rate
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
+            head_outcome_channels=duplication_num,
             forward_outcome_channels=duplication_num,
             **kwargs,
         )
@@ -31,12 +34,6 @@ class VNet(PytorchModelBase):
         self.down = nn.ModuleList()
         self.up = nn.ModuleList()
 
-        self.duplicate = Duplicate(
-            data_format['channels'],
-            duplication_num,
-            kernel_size,
-            dropout_rate,
-        )
         for i in range(n_layer):
             n_channel = (2 ** i) * duplication_num
             down_conv = DownConv(n_channel, kernel_size, conv_time, dropout_rate)
@@ -51,17 +48,15 @@ class VNet(PytorchModelBase):
         up_conv = UpConv(n_channel * 2, n_channel, kernel_size, conv_time, dropout_rate)
         self.up.append(up_conv)
 
-    def forward(self, x):
-        x = get_tensor_from_array(x)
+    def forward_head(self, inp, data_idx):
+        x = get_tensor_from_array(inp)
         if x.dim() != 5:
             raise AssertionError('input must have shape (batch_size, channel, D, H, W),\
                                  but get {}'.format(x.shape))
+        return self.heads[data_idx](x)
 
-        x_out = []
-
-        x = self.duplicate(x)
-        x_out.append(x)
-
+    def forward(self, x):
+        x_out = [x]
         for down_layer in self.down:
             x = down_layer(x)
             x_out.append(x)
@@ -71,7 +66,18 @@ class VNet(PytorchModelBase):
             x = u(x, x_down)
         return x
 
-    def build_tails(self, tail_num, input_channels, class_nums):
+    def build_heads(self, input_channels: list, output_channel: int):
+        return nn.ModuleList([
+            Duplicate(
+                input_channel,
+                output_channel,
+                self.kernel_size,
+                self.dropout_rate,
+            )
+            for input_channel in input_channels
+        ])
+
+    def build_tails(self, input_channels, class_nums):
         return nn.ModuleList([
             nn.Conv3d(input_channels, class_num, kernel_size=1)
             for class_num in class_nums

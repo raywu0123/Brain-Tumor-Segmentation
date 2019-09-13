@@ -96,7 +96,7 @@ def add_training_args(parser):
         '-lid',
         '--loss_function_id',
         type=str,
-        default='crossentropy-log(my_dice)',
+        default='crossentropy-log[my_dice]',
     )
     parser.add_argument(
         '-cg',

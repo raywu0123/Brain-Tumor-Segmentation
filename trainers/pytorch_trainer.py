@@ -98,7 +98,6 @@ class PytorchTrainer(TrainerBase, ABC):
             verbose_epoch_num,
             **kwargs,
     ):
-        print(kwargs)
         step_num = epoch_num * self.dataset_size
         verbose_step_num = ceil(verbose_epoch_num * self.dataset_size)
 
@@ -107,21 +106,12 @@ class PytorchTrainer(TrainerBase, ABC):
             self.profile.enable()
 
         for self.i_step in range(self.i_step, self.i_step + step_num):
-            log_dict = self.model.fit_generator(
+            log_dict, aux_log_dicts = self.model.fit_generator(
                 training_data_generator,
+                auxiliary_data_generators,
                 self.opt,
                 batch_size=batch_size,
-                tail_id=0,
             )
-            aux_log_dicts = [
-                self.model.fit_generator(
-                    aux_data_generator,
-                    self.opt,
-                    batch_size=batch_size,
-                    tail_id=tail_id + 1,
-                )
-                for tail_id, aux_data_generator in enumerate(auxiliary_data_generators)
-            ]
             self.scheduler.step()
             # fits on one single volume, one step = one volume
 

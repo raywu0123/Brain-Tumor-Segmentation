@@ -18,10 +18,10 @@ class NtuCtDataProvider(DataProviderBase):
 
     _data_format = {
         "channels": 1,
-        "depth": 180,
+        "depth": 150,
         "height": 512,
         "width": 512,
-        "class_num": 22,
+        "class_num": 9,
     }
 
     def __init__(self, args):
@@ -86,6 +86,7 @@ class NtuCtDataGenerator(DataGeneratorBase):
         image_obj = nib.load(img_path)
         affine = image_obj.affine
         image = image_obj.get_fdata()
+        image = np.clip(image, a_min=-1000., a_max=None)
         image = np.transpose(image, (2, 0, 1))
         label_path = os.path.join(self.data_dir, f"{data_id}/label.nii.gz")
 
