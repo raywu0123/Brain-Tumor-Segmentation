@@ -21,7 +21,7 @@ class NtuCtDataProvider(DataProviderBase):
         "depth": 150,
         "height": 512,
         "width": 512,
-        "class_num": 22,
+        "class_num": 9,
     }
 
     def __init__(self, args):
