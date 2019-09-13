@@ -94,6 +94,7 @@ def main():
         clip_grad=args.clip_grad,
         optim_batch_steps=args.optim_batch_steps,
         auxiliary_data_formats=auxiliary_data_formats,
+        use_multitask_loss=args.use_multitask_loss,
     )
 
     optimizer_factory = OptimizerFactory()

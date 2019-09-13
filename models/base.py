@@ -7,6 +7,7 @@ from torch import nn
 from .batch_samplers import BatchSamplerHub
 from .utils import summarize_logs
 from .loss_functions import loss_function_hub
+from .loss_functions.misc import MultiTaskLossWrapper
 
 
 class ModelBase(ABC):
@@ -32,9 +33,15 @@ class PytorchModelBase(ModelBase, nn.Module):
             auxiliary_data_formats: list,
             forward_outcome_channels: int,
             head_outcome_channels: int,
+            use_multitask_loss: bool,
     ):
         nn.Module.__init__(self)
         self.loss_fn = loss_function_hub[loss_function_id]
+        if use_multitask_loss:
+            self.loss_fn = MultiTaskLossWrapper(
+                loss_fn=self.loss_fn,
+                class_num=len(auxiliary_data_formats) + 1,
+            )
         self.batch_sampler_constructor = BatchSamplerHub[batch_sampler_id]
         self.batch_sampler = self.batch_sampler_constructor(
             data_format=data_format
@@ -102,7 +109,7 @@ class PytorchModelBase(ModelBase, nn.Module):
             batch_pred = self.forward_head(batch_data, data_idx)
             batch_pred = self.forward(batch_pred)
             batch_pred = self.tails[data_idx](batch_pred)
-            loss, log = self.loss_fn(batch_pred, batch_label)
+            loss, log = self.loss_fn(batch_pred, batch_label, data_idx=data_idx)
             loss /= self.optim_batch_steps
             logs[data_idx].append(log)
             loss.backward()

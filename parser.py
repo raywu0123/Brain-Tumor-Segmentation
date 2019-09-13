@@ -99,6 +99,12 @@ def add_training_args(parser):
         default='crossentropy-log[my_dice]',
     )
     parser.add_argument(
+        '-mtl',
+        '--multitask_loss',
+        dest='use_multitask_loss',
+        action='store_true',
+    )
+    parser.add_argument(
         '-cg',
         '--clip_grad',
         type=float,
@@ -120,6 +126,7 @@ def add_training_args(parser):
         help='if True, activate data augmentation while training',
     )
     parser.set_defaults(augmentation=False)
+    parser.set_defaults(use_multitask_loss=False)
 
 
 def add_optimizing_args(parser):
