@@ -17,8 +17,10 @@ class UNet(PytorchModelBase):
         channel_num: int = 64,
         conv_times: int = 2,
         use_position=False,
+        dropout_rate: int = 0.,
         **kwargs,
     ):
+        self.dropout_rate = dropout_rate
         self.kernel_size = kernel_size
         self.conv_times = conv_times
         self.use_position = use_position
@@ -38,12 +40,12 @@ class UNet(PytorchModelBase):
 
         for floor_idx in range(floor_num):
             channel_times = 2 ** floor_idx
-            d = DownConv(channel_num * channel_times, kernel_size, conv_times)
+            d = DownConv(channel_num * channel_times, kernel_size, conv_times, self.dropout_rate)
             self.down_layers.append(d)
 
         for floor_idx in range(floor_num)[::-1]:
             channel_times = 2 ** floor_idx
-            u = UpConv(channel_num * 2 * channel_times, kernel_size, conv_times)
+            u = UpConv(channel_num * 2 * channel_times, kernel_size, conv_times, self.dropout_rate)
             self.up_layers.append(u)
 
     def forward_head(self, inp, data_idx):
@@ -74,14 +76,26 @@ class UNet(PytorchModelBase):
         if self.use_position:
             input_channels = [chn + 1 for chn in input_channels]
         return nn.ModuleList([
-            ConvNTimes(input_channel, output_channel, self.kernel_size, self.conv_times)
+            ConvNTimes(
+                input_channel,
+                output_channel,
+                self.kernel_size,
+                self.conv_times,
+                self.dropout_rate,
+            )
             for input_channel in input_channels
         ])
 
     def build_tails(self, input_channels, class_nums):
         return nn.ModuleList([
             nn.Sequential(
-                ConvNTimes(input_channels, input_channels, self.kernel_size, self.conv_times),
+                ConvNTimes(
+                    input_channels,
+                    input_channels,
+                    self.kernel_size,
+                    self.conv_times,
+                    self.dropout_rate,
+                ),
                 nn.Conv2d(input_channels, class_num, kernel_size=1)
             )
             for class_num in class_nums
@@ -90,12 +104,14 @@ class UNet(PytorchModelBase):
 
 class ConvNTimes(nn.Module):
 
-    def __init__(self, in_ch, out_ch, kernel_size, conv_times):
+    def __init__(self, in_ch, out_ch, kernel_size, conv_times, dropout_rate):
         super(ConvNTimes, self).__init__()
         assert(conv_times > 0)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
         self.conv_times = conv_times
+
+        self.dropout = nn.Dropout2d(p=dropout_rate)
 
         self.in_conv = nn.Conv2d(in_ch, out_ch, kernel_size, padding=kernel_size // 2)
         for _ in range(conv_times - 1):
@@ -110,20 +126,23 @@ class ConvNTimes(nn.Module):
         x = inp
         for conv, norm in zip(self.convs, self.norms):
             x = conv(x)
+            x = self.dropout(x)
+            if self.dropout.p == 0.:
+                x = norm(x)
             x = F.relu(x)
-            x = norm(x)
+
         x = (x + inp) / 2
         return x
 
 
 class DownConv(nn.Module):
 
-    def __init__(self, in_ch, kernel_size, conv_times):
+    def __init__(self, in_ch, kernel_size, conv_times, dropout_rate):
         out_ch = in_ch * 2
         super(DownConv, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
-            ConvNTimes(in_ch, out_ch, kernel_size, conv_times)
+            ConvNTimes(in_ch, out_ch, kernel_size, conv_times, dropout_rate)
         )
 
     def forward(self, x):
@@ -133,7 +152,7 @@ class DownConv(nn.Module):
 
 class UpConv(nn.Module):
 
-    def __init__(self, in_ch, kernel_size, conv_times):
+    def __init__(self, in_ch, kernel_size, conv_times, dropout_rate):
         super(UpConv, self).__init__()
         out_ch = in_ch // 2
         self.conv_transpose = nn.ConvTranspose2d(
@@ -143,7 +162,7 @@ class UpConv(nn.Module):
             padding=kernel_size // 2,
             stride=2,
         )
-        self.conv = ConvNTimes(in_ch, out_ch, kernel_size, conv_times)
+        self.conv = ConvNTimes(in_ch, out_ch, kernel_size, conv_times, dropout_rate)
 
     def forward(self, x_down, x_up):
         x_down = self.conv_transpose(x_down)

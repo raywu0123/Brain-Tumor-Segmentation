@@ -49,6 +49,17 @@ ModelHub = {
             'batch_size': 20,
         },
     ),
+    'u_net_positional_dropout0.1': (
+        partial(
+            UNet,
+            use_position=True,
+            dropout_rate=0.1,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 2,
+        },
+    ),
     'v_net': (
         partial(
             VNet,
