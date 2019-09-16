@@ -4,13 +4,12 @@ import random
 import numpy as np
 
 from .base import BatchSamplerBase
-from preprocess_tools.image_utils import crop_or_pad_to_shape
 from .utils import flatten
 
 
 class CenterPatch3DBatchSampler(BatchSamplerBase):
 
-    patch_size = np.array((152, 128, 128), dtype=int)
+    patch_size = np.array((32, 128, 128), dtype=int)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -41,8 +40,20 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         batch_patch_label = np.zeros([len(batch_indexes), *self.patch_size], dtype=np.uint8)
 
         for idx, index in enumerate(batch_indexes):
-            batch_patch_volume[idx] = self._sample_by_index(batch_volume, index)
-            batch_patch_label[idx] = self._sample_by_index(batch_label, index)
+            patch_volume = self._sample_by_index(batch_volume, index)
+            patch_label = self._sample_by_index(batch_label, index)
+            batch_patch_volume[
+                idx, :,
+                :patch_volume.shape[1],
+                :patch_volume.shape[2],
+                :patch_volume.shape[3],
+            ] = patch_volume[:, :self.patch_size[0], :self.patch_size[1], :self.patch_size[2]]
+            batch_patch_label[
+                idx,
+                :patch_label.shape[0],
+                :patch_label.shape[1],
+                :patch_label.shape[2],
+            ] = patch_label[:self.patch_size[0], :self.patch_size[1], :self.patch_size[2]]
 
         return batch_patch_volume, batch_patch_label
 
@@ -54,7 +65,6 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
                 index_list[2]: index_list[2] + self.patch_size[1],
                 index_list[3]: index_list[3] + self.patch_size[2],
             ]
-            patch = crop_or_pad_to_shape(patch, [patch.shape[0], *self.patch_size])
         elif batch_data.ndim == 4:
             patch = batch_data[
                 index_list[0],
@@ -62,7 +72,6 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
                 index_list[2]: index_list[2] + self.patch_size[1],
                 index_list[3]: index_list[3] + self.patch_size[2],
             ]
-            patch = crop_or_pad_to_shape(patch, self.patch_size.tolist())
         else:
             raise ValueError(f'Invalid shape {batch_data.shape}')
         return patch
@@ -78,9 +87,9 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         else:
             lists = []
             for n in range(volume_shape[0]):
-                for d in range(ceil(volume_shape[1] / self.patch_size[0])):
-                    for h in range(ceil(volume_shape[2] / self.patch_size[1])):
-                        for w in range(ceil(volume_shape[3] / self.patch_size[2])):
+                for d in range(ceil(volume_shape[-3] / self.patch_size[-3])):
+                    for h in range(ceil(volume_shape[-2] / self.patch_size[-2])):
+                        for w in range(ceil(volume_shape[-1] / self.patch_size[-2])):
                             lists.append([
                                 n,
                                 d * self.patch_size[0],
@@ -109,7 +118,6 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
                 patch_position = self._get_patch_position(selected_label_position)
                 selected_label_position = [random_n, *patch_position]
                 lists.append(selected_label_position)
-
         return lists
 
     def _get_patch_position(self, selected_label_position):
@@ -117,8 +125,9 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         for patch_l, label_pos, data_l in zip(
                 self.patch_size, selected_label_position, self.data_format
         ):
+            a_max = max(data_l - patch_l, 0)
             x = label_pos - np.random.randint(0, patch_l)
-            x = np.clip(x, a_min=0, a_max=data_l - patch_l)
+            x = np.clip(x, a_min=0, a_max=a_max)
             pos.append(x)
         return pos
 
@@ -133,19 +142,16 @@ class CenterPatch3DBatchSampler(BatchSamplerBase):
         prediction = flatten(prediction)
 
         for pred_patch, index_list in zip(prediction, index_lists):
-            target_shape = test_volume[
-                0, 0,
-                index_list[1]: index_list[1] + self.patch_size[0],
-                index_list[2]: index_list[2] + self.patch_size[1],
-                index_list[3]: index_list[3] + self.patch_size[2],
-            ].shape
-            cropped_pred_patch = crop_or_pad_to_shape(
-                pred_patch, [pred_patch.shape[0], *target_shape]
-            )
-            reassembled_prediction[
+            reassemble_patch = reassembled_prediction[
                 index_list[0], :,
                 index_list[1]: index_list[1] + self.patch_size[0],
                 index_list[2]: index_list[2] + self.patch_size[1],
-                index_list[3]: index_list[3] + self.patch_size[2],
-            ] = cropped_pred_patch
+                index_list[3]: index_list[3] + self.patch_size[2]
+            ]
+            reassemble_patch[:, :, :, :] = pred_patch[
+                :,
+                :reassemble_patch.shape[-3],
+                :reassemble_patch.shape[-2],
+                :reassemble_patch.shape[-1],
+            ]
         return reassembled_prediction

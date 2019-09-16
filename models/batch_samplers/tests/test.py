@@ -39,7 +39,7 @@ class Patch3DBatchSamplerTestCase(TestCase):
     def setUp(self):
         self.data_format = {
             'channels': 5,
-            'depth': 64,
+            'depth': 33,
             'height': 18,
             'width': 20,
             'class_num': 2,
@@ -87,13 +87,25 @@ class Patch3DBatchSamplerTestCase(TestCase):
 
     def test_center_reverse(self):
         for training in [False, True]:
-            _, batch_label_list = self.center_sampler.convert_to_feedable(
+            batch_data_list, batch_label_list = self.center_sampler.convert_to_feedable(
                 self.batch_data, batch_size=self.batch_size, training=training
             )
-            for batch in batch_label_list:
-                self.assertTrue(np.all(batch.shape[-3:] == self.center_sampler.patch_size))
+            self.assertEqual(len(batch_data_list), len(batch_label_list))
+
+            for batch_data, batch_label in zip(batch_data_list, batch_label_list):
+                self.assertTupleEqual(batch_data.shape[-3:], tuple(self.center_sampler.patch_size))
+                self.assertTupleEqual(batch_label.shape[-3:], tuple(self.center_sampler.patch_size))
+                self.assertEqual(len(batch_data), len(batch_label))
 
             if not training:
+                mock_batch_pred_list = batch_data_list
+                reversed_batch_volume = self.center_sampler.reassemble(
+                    mock_batch_pred_list,
+                    self.batch_data,
+                )
+                self.assertTrue(
+                    np.all(reversed_batch_volume == self.batch_volume)
+                )
                 mock_batch_pred_list = [label[:, np.newaxis] for label in batch_label_list]
                 reversed_batch_label = self.center_sampler.reassemble(
                     mock_batch_pred_list,

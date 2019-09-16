@@ -3,11 +3,12 @@ import numpy as np
 
 
 def normalize_batch_image(batch_image):
-    assert(batch_image.ndim == 4)
-    std = np.std(batch_image, axis=(1, 2, 3), keepdims=True)
+    assert(batch_image.ndim == 4 or batch_image.ndim == 5)
+    axis = tuple(range(1, batch_image.ndim))
+    std = np.std(batch_image, axis=axis, keepdims=True)
+    mean = np.mean(batch_image, axis=axis, keepdims=True)
     std_is_zero = std == 0
-    batch_image = (batch_image - np.mean(batch_image, axis=(1, 2, 3), keepdims=True)) \
-        / (std + std_is_zero.astype(float))
+    batch_image = (batch_image - mean) / (std + std_is_zero.astype(float))
     return batch_image
 
 
