@@ -9,7 +9,6 @@ class VNet(PytorchModelBase):
 
     def __init__(
             self,
-            data_format: dict,
             duplication_num: int = 16,
             kernel_size: int = 3,
             conv_time: int = 2,
@@ -22,7 +21,6 @@ class VNet(PytorchModelBase):
         self.dropout_rate = dropout_rate
         super(VNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
-            data_format=data_format,
             head_outcome_channels=duplication_num,
             forward_outcome_channels=duplication_num,
             **kwargs,

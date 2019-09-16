@@ -14,3 +14,6 @@ class BatchSamplerBase(ABC):
     @abstractmethod
     def reassemble(self, prediction: list, test_data: dict, **kwargs):
         pass
+
+    def get_data_format(self, input_data_format):
+        return input_data_format

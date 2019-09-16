@@ -9,7 +9,6 @@ class ToyModel(PytorchModelBase):
 
     def __init__(
         self,
-        data_format: dict,
         batch_sampler_id: str = 'two_dim',
         num_units: [int] = (32, 32, 64, 64, 128),
         pooling_layer_num: [int] = (1, 3),
@@ -19,15 +18,10 @@ class ToyModel(PytorchModelBase):
         self.kernel_size = kernel_size
         super(ToyModel, self).__init__(
             batch_sampler_id=batch_sampler_id,
-            data_format=data_format,
             head_outcome_channels=num_units[0],
             forward_outcome_channels=num_units[0],
             **kwargs,
         )
-        self.image_chns = data_format['channels']
-        self.image_height = data_format['height']
-        self.image_width = data_format['width']
-        self.class_num = data_format['class_num']
 
         encoder_num_units = num_units
         self.encoder_convs = nn.ModuleList()

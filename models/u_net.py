@@ -32,9 +32,6 @@ class UNet(PytorchModelBase):
             **kwargs,
         )
         self.floor_num = floor_num
-        image_chns = data_format['channels']
-        if use_position:
-            image_chns += 1
         self.down_layers = nn.ModuleList()
         self.up_layers = nn.ModuleList()
 

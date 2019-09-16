@@ -13,7 +13,6 @@ class PSPNet(PytorchModelBase):
 
     def __init__(
             self,
-            data_format: dict,
             batch_sampler_id='two_dim',
             sizes=(1, 2, 3, 6, 10),
             psp_size=512,
@@ -23,12 +22,11 @@ class PSPNet(PytorchModelBase):
     ):
         super().__init__(
             batch_sampler_id=batch_sampler_id,
-            data_format=data_format,
-            head_outcome_channels=data_format['channels'],
+            head_outcome_channels=64,
             forward_outcome_channels=64,
             **kwargs,
         )
-        self.feats = extractor_hub[backend](data_format['channels'], pretrained)
+        self.feats = extractor_hub[backend](64, pretrained)
         self.psp = PSPModule(psp_size, 1024, sizes)
         self.drop_1 = nn.Dropout2d(p=0.3)
 
