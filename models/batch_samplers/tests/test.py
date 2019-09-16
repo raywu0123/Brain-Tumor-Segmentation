@@ -5,6 +5,8 @@ import numpy as np
 from ..two_dim import TwoDimBatchSampler
 from ..uniform_patch3d import UniformPatch3DBatchSampler
 from ..center_patch3d import CenterPatch3DBatchSampler
+from ..two_and_half_dim import TwoAndHalfDimBatchSampler
+from utils import to_one_hot_label
 
 
 class TwoDimBatchSamplerTestCase(TestCase):
@@ -12,16 +14,19 @@ class TwoDimBatchSamplerTestCase(TestCase):
     def setUp(self):
         self.batch_volume = np.random.random([10, 9, 8, 7, 6])
         self.batch_label = np.random.randint(2, size=[10, 8, 7, 6])
-        self.sampler = TwoDimBatchSampler(
-            data_format={
-                'channels': 9,
-                'depth': 8,
-                'height': 7,
-                'width': 6,
-                'class_num': 2,
-            }
+        self.data_format = {
+            'channels': 9,
+            'depth': 8,
+            'height': 7,
+            'width': 6,
+            'class_num': 2,
+        }
+        self.sampler = TwoDimBatchSampler(data_format=self.data_format)
+        self.two_and_half_dim_sampler = TwoAndHalfDimBatchSampler(
+            data_format=self.data_format,
+            depth=7,
         )
-        self.batch_size = 2
+        self.batch_size = 3
 
     def test_reverse(self):
         batch_data = {'volume': self.batch_volume, 'label': self.batch_label}
@@ -31,6 +36,22 @@ class TwoDimBatchSamplerTestCase(TestCase):
         reversed_batch_label = self.sampler.reassemble(batch_label_list, batch_data)
         self.assertTrue(
             np.all(reversed_batch_label == self.batch_label)
+        )
+
+    def test_two_and_half_reverse(self):
+        batch_data = {'volume': self.batch_volume, 'label': self.batch_label}
+        _, batch_label_list = self.two_and_half_dim_sampler.convert_to_feedable(
+            batch_data, batch_size=self.batch_size
+        )
+        mock_pred_list = [
+            to_one_hot_label(l, class_num=self.data_format['class_num'])
+            for l in batch_label_list
+        ]
+        reversed_batch_label = self.two_and_half_dim_sampler.reassemble(
+            mock_pred_list, batch_data
+        )
+        self.assertTrue(
+            np.all(np.argmax(reversed_batch_label, axis=1) == self.batch_label)
         )
 
 

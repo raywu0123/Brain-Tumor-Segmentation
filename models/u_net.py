@@ -24,6 +24,7 @@ class UNet(PytorchModelBase):
         self.kernel_size = kernel_size
         self.conv_times = conv_times
         self.use_position = use_position
+        self.batch_sampler_id = batch_sampler_id
         super(UNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
@@ -84,19 +85,25 @@ class UNet(PytorchModelBase):
         ])
 
     def build_tails(self, input_channels, class_nums):
-        return nn.ModuleList([
-            nn.Sequential(
-                ConvNTimes(
+        if 'two_dim_depth' in self.batch_sampler_id:
+            return nn.ModuleList([
+                TwoAndHalfTailModule(
                     input_channels,
-                    input_channels,
+                    class_num,
                     self.kernel_size,
                     self.conv_times,
-                    self.dropout_rate,
-                ),
-                nn.Conv2d(input_channels, class_num, kernel_size=1)
-            )
-            for class_num in class_nums
-        ])
+                    self.batch_sampler.depth,
+                )
+                for class_num in class_nums
+            ])
+        else:
+            return nn.ModuleList([
+                nn.Sequential(
+                    ConvNTimes(input_channels, input_channels, self.kernel_size, self.conv_times),
+                    nn.Conv2d(input_channels, class_num, kernel_size=1)
+                )
+                for class_num in class_nums
+            ])
 
 
 class ConvNTimes(nn.Module):
@@ -168,4 +175,23 @@ class UpConv(nn.Module):
         x_down = F.pad(x_down, (0, diff_x, 0, diff_y))
         x = torch.cat([x_down, x_up], dim=1)
         x = self.conv(x)
+        return x
+
+
+class TwoAndHalfTailModule(nn.Module):
+
+    def __init__(self, input_channels, class_num, kernel_size, conv_times, depth):
+        super().__init__()
+        self.conv = ConvNTimes(input_channels, depth, kernel_size, conv_times)
+        self.out_conv = nn.Conv3d(
+            in_channels=1,
+            out_channels=class_num,
+            kernel_size=kernel_size,
+            padding=kernel_size // 2,
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = x.view(len(x), 1, *x.shape[-3:])
+        x = self.out_conv(x)
         return x

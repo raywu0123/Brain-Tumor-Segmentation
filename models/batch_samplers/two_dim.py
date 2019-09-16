@@ -19,6 +19,8 @@ class TwoDimBatchSampler(BatchSamplerBase):
         two_dim_label = get_2d_from_3d(label)
 
         position = np.arange(len(two_dim_volume)) / len(two_dim_volume)
+        # only work if volume consists of single volume
+
         if training:
             two_dim_volume, two_dim_label, position =\
                 co_shuffle(two_dim_volume, two_dim_label, position)

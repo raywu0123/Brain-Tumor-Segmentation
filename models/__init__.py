@@ -54,6 +54,16 @@ ModelHub = {
             UNet,
             floor_num=5,
             conv_times=3,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 2,
+        }
+    ),
+    'u_net_positional_depth5': (
+        partial(
+            UNet,
+            batch_sampler_id='two_dim_depth5',
             use_position=True,
         ),
         {
