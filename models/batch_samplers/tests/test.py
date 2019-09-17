@@ -5,6 +5,7 @@ import numpy as np
 from ..two_dim import TwoDimBatchSampler
 from ..uniform_patch3d import UniformPatch3DBatchSampler
 from ..center_patch3d import CenterPatch3DBatchSampler
+from utils import to_one_hot_label
 
 
 class TwoDimBatchSamplerTestCase(TestCase):
@@ -39,7 +40,7 @@ class Patch3DBatchSamplerTestCase(TestCase):
     def setUp(self):
         self.data_format = {
             'channels': 5,
-            'depth': 64,
+            'depth': 65,
             'height': 18,
             'width': 20,
             'class_num': 2,
@@ -60,7 +61,7 @@ class Patch3DBatchSamplerTestCase(TestCase):
                 self.data_format['height'],
                 self.data_format['width'],
             ],
-            p=[0.01, 0.99],
+            p=[0.1, 0.9],
         )
         self.batch_data = {'volume': self.batch_volume, 'label': self.batch_label}
 
@@ -94,11 +95,14 @@ class Patch3DBatchSamplerTestCase(TestCase):
                 self.assertTrue(np.all(batch.shape[-3:] == self.center_sampler.patch_size))
 
             if not training:
-                mock_batch_pred_list = [label[:, np.newaxis] for label in batch_label_list]
+                mock_batch_pred_list = [
+                    to_one_hot_label(label, class_num=2)
+                    for label in batch_label_list
+                ]
                 reversed_batch_label = self.center_sampler.reassemble(
                     mock_batch_pred_list,
                     self.batch_data,
                 )
                 self.assertTrue(
-                    np.all(reversed_batch_label[:, 0] == self.batch_label)
+                    np.all(np.argmax(reversed_batch_label, axis=1) == self.batch_label)
                 )
