@@ -182,16 +182,11 @@ class TwoAndHalfTailModule(nn.Module):
 
     def __init__(self, input_channels, class_num, kernel_size, conv_times, depth):
         super().__init__()
-        self.conv = ConvNTimes(input_channels, depth, kernel_size, conv_times)
-        self.out_conv = nn.Conv3d(
-            in_channels=1,
-            out_channels=class_num,
-            kernel_size=kernel_size,
-            padding=kernel_size // 2,
-        )
+        self.class_num = class_num
+        self.depth = depth
+        self.conv = ConvNTimes(input_channels, class_num * depth, kernel_size, conv_times)
 
     def forward(self, x):
         x = self.conv(x)
-        x = x.view(len(x), 1, *x.shape[-3:])
-        x = self.out_conv(x)
+        x = x.view(len(x), self.class_num, self.depth, *x.shape[-2:])
         return x
