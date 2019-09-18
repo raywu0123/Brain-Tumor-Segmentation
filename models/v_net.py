@@ -174,20 +174,27 @@ class ConvNTimes(nn.Module):
 
     def __init__(self, channel_num, kernel_size, N):
         super(ConvNTimes, self).__init__()
-        self.convs = nn.ModuleList()
-        for _ in range(N):
-            conv = nn.Conv3d(
+        self.convs = nn.ModuleList([
+            nn.Conv3d(
                 channel_num,
                 channel_num,
                 kernel_size=kernel_size,
                 padding=kernel_size // 2,
             )
-            self.convs.append(conv)
+            for _ in range(N)
+        ])
+        self.norms = nn.ModuleList([
+            nn.InstanceNorm3d(num_features=channel_num)
+            for _ in range(N)
+        ])
 
-    def forward(self, x):
-        for conv in self.convs:
+    def forward(self, inp):
+        x = inp
+        for conv, norm in zip(self.convs, self.norms):
             x = conv(x)
+            x = norm(x)
             x = F.relu(x)
+        x += inp
         return x
 
 

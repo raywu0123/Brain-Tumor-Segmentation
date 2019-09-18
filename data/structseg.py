@@ -1,5 +1,6 @@
 import os
 
+# from skimage.transform import resize
 from tqdm import tqdm
 import nibabel as nib
 import numpy as np
@@ -128,8 +129,26 @@ class StructSegDataGenerator(DataGeneratorBase):
             else:
                 volume, label, affine = self._preload_get_image_and_label(data_id)
 
-            batch_volume[idx, :, :len(volume)] = volume[:self.data_format['depth']]
-            batch_label[idx, :len(volume)] = label[:self.data_format['depth']]
+            batch_volume[
+                idx, :,
+                :volume.shape[0],
+                :volume.shape[1],
+                :volume.shape[2],
+            ] = volume[
+                :self.data_format['depth'],
+                :self.data_format['height'],
+                :self.data_format['width'],
+            ]
+            batch_label[
+                idx,
+                :label.shape[0],
+                :label.shape[1],
+                :label.shape[2],
+            ] = label[
+                :self.data_format['depth'],
+                :self.data_format['height'],
+                :self.data_format['width'],
+            ]
             affines.append(affine)
 
         return {
@@ -151,11 +170,16 @@ class StructSegDataGenerator(DataGeneratorBase):
         image_obj = nib.load(img_path)
         affine = image_obj.affine
         image = image_obj.get_fdata()
+
+        # zooms = image_obj.header.get_zooms()
+        # new_shape = np.array(image.shape) * np.array(zooms) / np.array([1., 1., 3.])
+        # image = resize(image, new_shape)
         image = np.transpose(image, (2, 0, 1))
         label_path = os.path.join(self.data_dir, f"{data_id}/label.nii.gz")
 
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
+            # label = resize(label, new_shape, order=0)
             label = np.transpose(label, (2, 0, 1))
         else:
             label = None

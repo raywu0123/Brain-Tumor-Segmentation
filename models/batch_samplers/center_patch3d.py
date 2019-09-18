@@ -9,7 +9,7 @@ from .utils import flatten, normalize_position
 
 class CenterPatch3DBatchSampler(BatchSamplerBase):
 
-    patch_size = np.array((152 // 4, 512 // 4, 512 // 4), dtype=int)
+    patch_size = np.array((128, 128, 128), dtype=int)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

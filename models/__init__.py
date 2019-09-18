@@ -140,14 +140,14 @@ ModelHub = {
         partial(
             VNet,
             duplication_num=23,
-            conv_time=3,
+            conv_time=4,
             n_layer=5,
             batch_sampler_id='center_patch3d',
             use_position=True,
         ),
         {
             **DEFAULT_TRAINING_PARAM,
-            'batch_size': 2,
+            'batch_size': 1,
         },
     ),
     'pspnet_2d_resnet34': (
