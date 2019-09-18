@@ -20,12 +20,14 @@ class UNet(PytorchModelBase):
         dropout_rate: int = 0.,
         attention: bool = False,
         self_attention: int = 0,
+        activation_fn: str = 'relu',
         **kwargs,
     ):
         self.dropout_rate = dropout_rate
         self.kernel_size = kernel_size
         self.conv_times = conv_times
         self.use_position = use_position
+        self.actication_fn = activation_fn
         super(UNet, self).__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
@@ -47,7 +49,13 @@ class UNet(PytorchModelBase):
 
         for floor_idx in range(floor_num):
             channel_times = 2 ** floor_idx
-            d = DownConv(channel_num * channel_times, kernel_size, conv_times, self.dropout_rate)
+            d = DownConv(
+                channel_num * channel_times,
+                kernel_size,
+                conv_times,
+                self.dropout_rate,
+                activation_fn,
+            )
             self.down_layers.append(d)
 
         for floor_idx in range(floor_num)[::-1]:
@@ -58,6 +66,7 @@ class UNet(PytorchModelBase):
                 kernel_size,
                 conv_times,
                 self.dropout_rate,
+                activation_fn,
             )
             self.up_layers.append(u)
 
@@ -97,6 +106,7 @@ class UNet(PytorchModelBase):
                 self.kernel_size,
                 self.conv_times,
                 self.dropout_rate,
+                self.actication_fn,
             )
             for input_channel in input_channels
         ])
@@ -110,6 +120,7 @@ class UNet(PytorchModelBase):
                     self.kernel_size,
                     self.conv_times,
                     self.dropout_rate,
+                    self.actication_fn,
                 ),
                 nn.Conv2d(input_channels, class_num, kernel_size=1)
             )
@@ -119,9 +130,18 @@ class UNet(PytorchModelBase):
 
 class ConvNTimes(nn.Module):
 
-    def __init__(self, in_ch, out_ch, kernel_size, conv_times, dropout_rate):
+    def __init__(
+        self,
+        in_ch,
+        out_ch,
+        kernel_size,
+        conv_times,
+        dropout_rate,
+        activation_fn,
+    ):
         super(ConvNTimes, self).__init__()
         assert(conv_times > 0)
+        self.activation_fn = getattr(F, activation_fn)
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
         self.conv_times = conv_times
@@ -144,7 +164,7 @@ class ConvNTimes(nn.Module):
             x = self.dropout(x)
             if self.dropout.p == 0.:
                 x = norm(x)
-            x = F.relu(x)
+            x = self.activation_fn(x)
 
         x = (x + inp) / 2
         return x
@@ -152,12 +172,19 @@ class ConvNTimes(nn.Module):
 
 class DownConv(nn.Module):
 
-    def __init__(self, in_ch, kernel_size, conv_times, dropout_rate):
+    def __init__(
+        self,
+        in_ch,
+        kernel_size,
+        conv_times,
+        dropout_rate,
+        activation_fn,
+    ):
         out_ch = in_ch * 2
         super(DownConv, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
-            ConvNTimes(in_ch, out_ch, kernel_size, conv_times, dropout_rate)
+            ConvNTimes(in_ch, out_ch, kernel_size, conv_times, dropout_rate, activation_fn)
         )
 
     def forward(self, x):
@@ -167,7 +194,7 @@ class DownConv(nn.Module):
 
 class UpConv(nn.Module):
 
-    def __init__(self, in_ch, kernel_size, conv_times, dropout_rate):
+    def __init__(self, in_ch, kernel_size, conv_times, dropout_rate, activation_fn):
         super(UpConv, self).__init__()
         out_ch = in_ch // 2
         self.conv_transpose = nn.ConvTranspose2d(
@@ -177,7 +204,14 @@ class UpConv(nn.Module):
             padding=kernel_size // 2,
             stride=2,
         )
-        self.conv = ConvNTimes(in_ch, out_ch, kernel_size, conv_times, dropout_rate)
+        self.conv = ConvNTimes(
+            in_ch,
+            out_ch,
+            kernel_size,
+            conv_times,
+            dropout_rate,
+            activation_fn,
+        )
 
     def forward(self, x_down, x_up):
         x_down = self.conv_transpose(x_down)

@@ -49,6 +49,32 @@ ModelHub = {
             'batch_size': 20,
         },
     ),
+    'u_net_positional_HaN_selu': (
+        partial(
+            UNet,
+            floor_num=5,
+            conv_times=3,
+            use_position=True,
+            activation_fn='selu'
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 2,
+        },
+    ),
+    'u_net_positional_HaN_gelu': (
+        partial(
+            UNet,
+            floor_num=5,
+            conv_times=3,
+            use_position=True,
+            activation_fn='gelu'
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 2,
+        },
+    ),
     'u_net_positional_dropout0.1': (
         partial(
             UNet,
