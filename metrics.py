@@ -23,7 +23,9 @@ def soft_dice(prob_pred, tar):
 
 
 def cross_entropy(prob_pred, tar_ids):
-    weights = GetClassWeights()(tar_ids, class_num=prob_pred.shape[1])
+    class_num = prob_pred.shape[1]
+    weights = GetClassWeights()(tar_ids, class_num=class_num)
+    weights /= class_num
 
     selected_pred = np.take_along_axis(
         prob_pred,  # (N, C, ...)
