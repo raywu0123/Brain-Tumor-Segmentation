@@ -1,6 +1,5 @@
 import inspect
 
-from keras.utils import to_categorical
 import numpy as np
 
 
@@ -49,10 +48,21 @@ def match_kwargs(func, **kwargs):
     return ret
 
 
-def to_one_hot_label(label, class_num):
-    categorical_label = to_categorical(label, class_num, dtype=np.bool)
-    categorical_label = np.moveaxis(categorical_label, -1, 1)
-    return categorical_label
+def to_one_hot_label(y, class_num=None, dtype='float32'):
+    y = np.array(y, dtype='int')
+    input_shape = y.shape
+    if input_shape and input_shape[-1] == 1 and len(input_shape) > 1:
+        input_shape = tuple(input_shape[:-1])
+    y = y.ravel()
+    if not class_num:
+        class_num = np.max(y) + 1
+    n = y.shape[0]
+    categorical = np.zeros((n, class_num), dtype=dtype)
+    categorical[np.arange(n), y] = 1
+    output_shape = input_shape + (class_num,)
+    categorical = np.reshape(categorical, output_shape)
+    categorical = np.moveaxis(categorical, -1, 1)
+    return categorical
 
 
 def strip_file_extension(file_path):
