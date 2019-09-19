@@ -109,7 +109,6 @@ def main():
         model=model,
         dataset_size=len(data_provider),
         comet_experiment=experiment,
-        checkpoint_dir=args.checkpoint_dir,
         profile=args.profile,
         optimizer=optimizer,
         scheduler=scheduler,

@@ -26,9 +26,9 @@ class PytorchTrainer(TrainerBase, ABC):
     def __init__(
             self,
             model: PytorchModelBase,
-            optimizer,
-            scheduler,
             dataset_size: int,
+            optimizer=None,
+            scheduler=None,
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
             profile: bool = False,
@@ -76,7 +76,8 @@ class PytorchTrainer(TrainerBase, ABC):
     def load(self, file_path):
         checkpoint = torch.load(os.path.join(file_path, 'checkpoint.pth.tar'))
         self.model.load_state_dict(checkpoint['state_dict'])
-        self.opt.load_state_dict(checkpoint['optimizer'])
+        if self.opt is not None:
+            self.opt.load_state_dict(checkpoint['optimizer'])
         self.i_step = checkpoint['step'] + 1
         print(f'model loaded from {file_path}')
 
