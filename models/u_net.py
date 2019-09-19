@@ -18,6 +18,7 @@ class UNet(PytorchModelBase):
         conv_times: int = 2,
         use_position=False,
         dropout_rate: int = 0.,
+        attention: bool = False,
         **kwargs,
     ):
         self.dropout_rate = dropout_rate
@@ -45,7 +46,13 @@ class UNet(PytorchModelBase):
 
         for floor_idx in range(floor_num)[::-1]:
             channel_times = 2 ** floor_idx
-            u = UpConv(channel_num * 2 * channel_times, kernel_size, conv_times, self.dropout_rate)
+            up_conv_class = AttentionUpConv if attention else UpConv
+            u = up_conv_class(
+                channel_num * 2 * channel_times,
+                kernel_size,
+                conv_times,
+                self.dropout_rate,
+            )
             self.up_layers.append(u)
 
     def forward_head(self, inp, data_idx):
@@ -168,7 +175,53 @@ class UpConv(nn.Module):
         x_down = self.conv_transpose(x_down)
         diff_x = x_up.size()[2] - x_down.size()[2]
         diff_y = x_up.size()[3] - x_down.size()[3]
-        x_down = F.pad(x_down, (0, diff_x, 0, diff_y))
+        x_down = F.pad(x_down, [0, diff_x, 0, diff_y])
         x = torch.cat([x_down, x_up], dim=1)
         x = self.conv(x)
         return x
+
+
+class AttentionUpConv(nn.Module):
+
+    def __init__(self, in_ch, kernel_size, conv_times, dropout_rate):
+        super().__init__()
+        out_ch = in_ch // 2
+        self.conv_transpose = nn.ConvTranspose2d(
+            in_ch,
+            out_ch,
+            kernel_size,
+            padding=kernel_size // 2,
+            stride=2,
+        )
+        self.query_conv = nn.Conv2d(
+            in_channels=out_ch,
+            out_channels=out_ch,
+            kernel_size=1,
+        )
+        self.key_conv = nn.Conv2d(
+            in_channels=out_ch,
+            out_channels=out_ch,
+            kernel_size=1,
+        )
+        self.attention_conv = nn.Conv2d(
+            in_channels=out_ch,
+            out_channels=1,
+            kernel_size=1,
+        )
+        self.n_conv = ConvNTimes(
+            in_ch, out_ch, kernel_size, conv_times, dropout_rate
+        )
+
+    def forward(self, x, x_down):
+        x = self.conv_transpose(x)
+        diff_x = x_down.size()[2] - x.size()[2]
+        diff_y = x_down.size()[3] - x.size()[3]
+        x = F.pad(x, [0, diff_x, 0, diff_y])
+
+        q = self.query_conv(x)
+        k = self.key_conv(x_down)
+        attention = torch.sigmoid(self.attention_conv(F.relu(q + k)))
+        value = x_down * attention
+        concat = torch.cat([x, value], dim=1)
+        out = self.n_conv(concat)
+        return out

@@ -60,6 +60,19 @@ ModelHub = {
             'batch_size': 2,
         },
     ),
+    'u_net_positional_HaN_attention': (
+        partial(
+            UNet,
+            floor_num=5,
+            conv_times=3,
+            attention=True,
+            use_position=True,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 2,
+        },
+    ),
     'v_net': (
         partial(
             VNet,
