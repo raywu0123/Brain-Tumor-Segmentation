@@ -75,12 +75,24 @@ if __name__ == '__main__':
     get_data_provider, data_provider_parameters = data_provider_hub[args.data_provider_id]
     data_provider = get_data_provider(data_provider_parameters)
 
+    auxiliary_data_providers = []
+    auxiliary_data_formats = []
+    for data_provider_id in args.auxiliary_data_provider_ids:
+        get_data_provider, data_provider_parameters = data_provider_hub[data_provider_id]
+        aux_data_provider = get_data_provider(data_provider_parameters)
+        auxiliary_data_providers.append(aux_data_provider)
+        auxiliary_data_formats.append(aux_data_provider.data_format)
+
     get_model, fit_hyper_parameters = ModelHub[model_id]
-    model = get_model(data_provider.data_format)
+    model = get_model(
+        data_format=data_provider.data_format,
+        auxiliary_data_formats=auxiliary_data_formats,
+    )
 
     trainer = PytorchTrainer(
         model=model,
         checkpoint_dir=args.checkpoint_dir,
+        dataset_size=len(data_provider),
     )
 
     flow(

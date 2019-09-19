@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv('./.env')
 
 STRUCTSEG_DIR = os.environ.get('STRUCTSEG_DIR')
+STRUCTSEG_TEST_DIR = os.environ.get('STRUCTSEG_TEST_DIR')
 
 
 class StructSeg2019DataProvider(DataProviderBase):
@@ -78,8 +79,15 @@ class StructSeg2019DataProvider(DataProviderBase):
         ),
     }
 
-    def __init__(self, args):
+    def __init__(self, args: str):
+        is_test = False
+        if args.endswith('_test'):
+            args = args[:-5]
+            is_test = True
+
         self.data_dir, self._data_format, self._metric = self.DIR_HUB[args]
+        if is_test:
+            self.data_dir = '/input'
         self.all_ids = os.listdir(self.data_dir)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]

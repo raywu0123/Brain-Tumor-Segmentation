@@ -75,3 +75,6 @@ class NormalizedDataGeneratorWrapper(DataGeneratorWrapperBase):
         mean = np.mean(batch_volume, axis=tuple(range(2, batch_volume.ndim)), keepdims=True)
         std = np.std(batch_volume, axis=tuple(range(2, batch_volume.ndim)), keepdims=True)
         return (batch_volume - mean) / std
+
+    def __len__(self):
+        return len(self.data_generator)
