@@ -139,7 +139,6 @@ class StructSegDataGenerator(DataGeneratorBase):
 
             batch_volume[
                 idx, :,
-                :len(volume),
                 :volume.shape[-3],
                 :volume.shape[-2],
                 :volume.shape[-1],
@@ -150,7 +149,6 @@ class StructSegDataGenerator(DataGeneratorBase):
             ]
             batch_label[
                 idx,
-                :len(volume),
                 :label.shape[-3],
                 :label.shape[-2],
                 :label.shape[-1],
@@ -180,16 +178,16 @@ class StructSegDataGenerator(DataGeneratorBase):
         image_obj = nib.load(img_path)
         affine = image_obj.affine
         image = image_obj.get_fdata()
-        zooms = image_obj.get_zooms()
+        # zooms = image_obj.header.get_zooms()
 
-        new_shape = np.array(image.shape) * np.array(zooms) / np.array([1., 1., 3.])
-        image = resize(image, new_shape)
+        # new_shape = np.array(image.shape) * np.array(zooms) / np.array([1., 1., 3.])
+        # image = resize(image, new_shape)
         image = np.transpose(image, (2, 0, 1))
         label_path = os.path.join(self.data_dir, f"{data_id}/label.nii.gz")
 
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
-            label = resize(label, new_shape, order=0)
+            # label = resize(label, new_shape, order=0)
             label = np.transpose(label, (2, 0, 1))
         else:
             label = None

@@ -64,8 +64,8 @@ class ImageAugmentor(AugmentorBase):
     @staticmethod
     def _albumentations_strong_aug() -> Compose:
         return Compose([
-            ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20),
-            Flip(),
+            ShiftScaleRotate(shift_limit=0.1, scale_limit=0., rotate_limit=0),
+            # Flip(),
             # ElasticTransform(alpha=720, sigma=24, approximate=False),
             # RandomBrightnessContrast(),
         ])
