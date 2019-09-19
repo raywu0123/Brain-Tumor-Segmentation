@@ -1,6 +1,5 @@
 import os
 
-from skimage.transform import resize
 from tqdm import tqdm
 import nibabel as nib
 import numpy as np
@@ -88,7 +87,7 @@ class StructSeg2019DataProvider(DataProviderBase):
 
         self.data_dir, self._data_format, self._metric = self.DIR_HUB[args]
         if is_test:
-            self.data_dir = '/input'
+            self.data_dir = STRUCTSEG_TEST_DIR
         self.all_ids = os.listdir(self.data_dir)
         self.train_ids = self.all_ids[: -len(self.all_ids) // 10]
         self.test_ids = self.all_ids[-len(self.all_ids) // 10:]
@@ -129,6 +128,8 @@ class StructSegDataGenerator(DataGeneratorBase):
         ), dtype=np.uint8)
 
         affines = []
+        original_shapes = []
+        no_label = False
         for idx, data_id in enumerate(data_ids):
             if self.preload:
                 volume = self.all_volumes[data_id]
@@ -147,23 +148,30 @@ class StructSegDataGenerator(DataGeneratorBase):
                 :self.data_format['height'],
                 :self.data_format['width'],
             ]
-            batch_label[
-                idx,
-                :label.shape[-3],
-                :label.shape[-2],
-                :label.shape[-1],
-            ] = label[
-                :self.data_format['depth'],
-                :self.data_format['height'],
-                :self.data_format['width'],
-            ]
+            if label is not None:
+                batch_label[
+                    idx,
+                    :label.shape[-3],
+                    :label.shape[-2],
+                    :label.shape[-1],
+                ] = label[
+                    :self.data_format['depth'],
+                    :self.data_format['height'],
+                    :self.data_format['width'],
+                ]
+            else:
+                no_label = True
             affines.append(affine)
+            original_shapes.append(volume.shape)
 
+        data_ids = [f'{data_id}.nii.gz' for data_id in data_ids]
         return {
             'volume': batch_volume,
             'label': batch_label,
             'data_ids': data_ids,
             'affines': affines,
+            'original_shapes': original_shapes,
+            'no_label': no_label,
         }
 
     def _preload(self):
@@ -178,16 +186,12 @@ class StructSegDataGenerator(DataGeneratorBase):
         image_obj = nib.load(img_path)
         affine = image_obj.affine
         image = image_obj.get_fdata()
-        # zooms = image_obj.header.get_zooms()
 
-        # new_shape = np.array(image.shape) * np.array(zooms) / np.array([1., 1., 3.])
-        # image = resize(image, new_shape)
         image = np.transpose(image, (2, 0, 1))
         label_path = os.path.join(self.data_dir, f"{data_id}/label.nii.gz")
 
         if os.path.exists(label_path):
             label = nib.load(label_path).get_fdata()
-            # label = resize(label, new_shape, order=0)
             label = np.transpose(label, (2, 0, 1))
         else:
             label = None

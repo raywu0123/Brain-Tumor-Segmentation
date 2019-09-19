@@ -144,18 +144,24 @@ class PytorchTrainer(TrainerBase, ABC):
                 print("Exit by profiler")
                 sys.exit(0)
 
-    def predict_on_generator(self, data_generator, save_base_dir, metric, save_volume, **kwargs):
+    def predict_on_generator(
+            self,
+            data_generator,
+            save_base_dir,
+            metric,
+            save_volume: str,
+            **kwargs,
+    ):
         self.prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
         self.hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
 
         if not os.path.exists(save_base_dir):
             os.mkdir(save_base_dir)
 
-        if save_volume:
-            if not os.path.exists(self.prob_prediction_path):
-                os.mkdir(self.prob_prediction_path)
-            if not os.path.exists(self.hard_prediction_path):
-                os.mkdir(self.hard_prediction_path)
+        if 'soft' in save_volume and not os.path.exists(self.prob_prediction_path):
+            os.mkdir(self.prob_prediction_path)
+        if 'hard' in save_volume and not os.path.exists(self.hard_prediction_path):
+            os.mkdir(self.hard_prediction_path)
 
         metrics_dict = {}
 
@@ -165,26 +171,33 @@ class PytorchTrainer(TrainerBase, ABC):
             label, data_id = batch_data['label'], batch_data['data_ids'][0]
             pred = self.model.predict(batch_data, **kwargs)
 
-            metrics = metric(pred, label).all_metrics(verbose=False)
-            metrics_dict[data_id] = metrics
+            if not('no_label' in batch_data.keys() and batch_data['no_label']):
+                metrics = metric(pred, label).all_metrics(verbose=False)
+                metrics_dict[data_id] = metrics
 
-            if save_volume:
-                self._save_volume_prediction(pred, batch_data)
+            if len(save_volume) != 0:
+                self._save_volume_prediction(pred, batch_data, save_volume)
 
         self._save_metric_predictions(metrics_dict, save_base_dir)
         print(f'prediction result saved to {save_base_dir}')
         return metrics_dict
 
-    def _save_volume_prediction(self, pred, batch_data):
-        # to [D, H, W, C] format
-        pred = pred[0].transpose([2, 3, 1, 0])
-        hard_pred = np.argmax(pred, axis=-1)
-
+    def _save_volume_prediction(self, pred, batch_data, save_volume):
         data_id = batch_data['data_ids'][0]
         affine = batch_data['affines'][0]
+        pred = pred[0]
+        if 'original_shapes' in batch_data.keys():
+            original_shape = batch_data['original_shapes'][0]
+            pred = pred[:, :original_shape[-3], :original_shape[-2], :original_shape[-1]]
 
-        save_array_to_nii(pred, os.path.join(self.prob_prediction_path, data_id), affine)
-        save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
+        # to [D, H, W, C] format
+        pred = pred.transpose([2, 3, 1, 0])
+        if 'hard' in save_volume:
+            hard_pred = np.argmax(pred, axis=-1)
+            save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
+
+        if 'soft' in save_volume:
+            save_array_to_nii(pred, os.path.join(self.prob_prediction_path, data_id), affine)
 
     @staticmethod
     def _save_metric_predictions(metrics_dict, save_base_dir):
