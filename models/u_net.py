@@ -99,7 +99,7 @@ class UNet(PytorchModelBase):
         else:
             return nn.ModuleList([
                 nn.Sequential(
-                    ConvNTimes(input_channels, input_channels, self.kernel_size, self.conv_times),
+                    ConvNTimes(input_channels, input_channels, self.kernel_size, self.conv_times, self.dropout_rate),
                     nn.Conv2d(input_channels, class_num, kernel_size=1)
                 )
                 for class_num in class_nums
