@@ -19,6 +19,7 @@ class UNet(PytorchModelBase):
         use_position=False,
         dropout_rate: int = 0.,
         attention: bool = False,
+        self_attention: int = 0,
         **kwargs,
     ):
         self.dropout_rate = dropout_rate
@@ -38,6 +39,11 @@ class UNet(PytorchModelBase):
             image_chns += 1
         self.down_layers = nn.ModuleList()
         self.up_layers = nn.ModuleList()
+
+        self.self_attention_module = nn.Sequential(*[
+          SelfAttention(in_dim=2 ** floor_num * channel_num)
+          for _ in range(self_attention)
+        ])
 
         for floor_idx in range(floor_num):
             channel_times = 2 ** floor_idx
@@ -74,6 +80,8 @@ class UNet(PytorchModelBase):
         for down_layer in self.down_layers:
             x = down_layer(x)
             x_out.append(x)
+
+        x = self.self_attention_module(x)
         x_out = x_out[:-1]
         for x_down, u in zip(x_out[::-1], self.up_layers):
             x = u(x, x_down)
@@ -224,4 +232,45 @@ class AttentionUpConv(nn.Module):
         value = x_down * attention
         concat = torch.cat([x, value], dim=1)
         out = self.n_conv(concat)
+        return out
+
+
+class SelfAttention(nn.Module):
+    """
+    Self attention Layer, adapted from
+    https://github.com/heykeetae/Self-Attention-GAN/blob/master/sagan_models.py
+    """
+
+    def __init__(self, in_dim):
+        super().__init__()
+        self.chanel_in = in_dim
+        self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim // 8, kernel_size=1)
+        self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim // 8, kernel_size=1)
+        self.value_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1))
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x):
+        """
+            inputs :
+                x : input feature maps( B X C X W X H)
+            returns :
+                out : self attention value + input feature
+                attention: B X N X N (N is Width*Height)
+        """
+        m_batchsize, C, width, height = x.size()
+        proj_query = self.query_conv(x).view(
+            m_batchsize,
+            -1,
+            width * height
+        ).permute(0, 2, 1)  # B X CX(N)
+        proj_key = self.key_conv(x).view(m_batchsize, -1, width * height)  # B X C x (*W*H)
+        energy = torch.bmm(proj_query, proj_key)  # transpose check
+        attention = self.softmax(energy)  # BX (N) X (N)
+        proj_value = self.value_conv(x).view(m_batchsize, -1, width * height)  # B X C X N
+
+        out = torch.bmm(proj_value, attention.permute(0, 2, 1))
+        out = out.view(m_batchsize, C, width, height)
+
+        out = self.gamma * out + x
         return out
