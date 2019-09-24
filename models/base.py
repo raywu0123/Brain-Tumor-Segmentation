@@ -95,6 +95,7 @@ class PytorchModelBase(ModelBase, nn.Module):
 
         self.zero_grad()
         sample_batch_order = np.random.permutation(len(batch_data_list))
+        params = self.parameters()
         for idx in sample_batch_order:
             batch_data, batch_label, data_idx = \
                 batch_data_list[idx], batch_label_list[idx], data_idx_list[idx]
@@ -107,7 +108,7 @@ class PytorchModelBase(ModelBase, nn.Module):
             loss.backward()
 
             if self.clip_grad > 0:
-                torch.nn.utils.clip_grad_norm_(self.parameters(), self.clip_grad)
+                torch.nn.utils.clip_grad_norm_(params, self.clip_grad)
 
             self.batch_step_num += 1
             if self.batch_step_num % self.optim_batch_steps == 0:
