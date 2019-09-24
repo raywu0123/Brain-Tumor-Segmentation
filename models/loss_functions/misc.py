@@ -23,12 +23,6 @@ def weighted_cross_entropy(logits: torch.Tensor, target: np.array):
     weights = GetClassWeights()(target, class_num=logits.shape[1])
     weights = get_tensor_from_array(weights)
     target = get_tensor_from_array(target).long()
-
-    # target = target.transpose(1, -1)
-    # output = output.transpose(1, -1)
-    # loss = target * weights * torch.log(output + epsilon)
-    # loss = -torch.mean(torch.sum(loss, dim=-1))
-
     loss = nn.CrossEntropyLoss(weight=weights)(logits, target)
     return loss, {'crossentropy_loss': loss.item()}
 

@@ -17,8 +17,10 @@ def soft_dice(prob_pred, tar):
     if not ((tar == 0) | (tar == 1)).all():
         raise ValueError('Target data should be binary.')
     intersection = tar * prob_pred
-    dice_loss = (2 * np.sum(intersection) + epsilon) \
-        / (np.sum(prob_pred ** 2) + np.sum(tar ** 2) + epsilon)
+    intersection = np.sum(intersection)
+    m1 = np.sum(prob_pred ** 2)
+    m2 = np.sum(tar ** 2)
+    dice_loss = (2 * intersection + epsilon) / (m1 + m2 + epsilon)
     return dice_loss
 
 
