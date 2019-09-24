@@ -27,8 +27,8 @@ def naive_soft_dice_score(logits: torch.Tensor, onehot_tar: np.array):
     m1 = torch.sum(m1 ** 2, dim=2)
     m2 = torch.sum(m2 ** 2, dim=2)
     intersection = torch.sum(intersection, dim=2)
-
-    dice_score = torch.mean((2. * intersection + epsilon) / (m1 + m2 + epsilon))
+    dice_score = (2. * intersection + epsilon) / (m1 + m2 + epsilon)
+    dice_score = torch.mean(dice_score)
     return dice_score, {'soft_dice': dice_score.item()}
 
 

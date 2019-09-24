@@ -17,8 +17,10 @@ def soft_dice(prob_pred, tar):
     if not ((tar == 0) | (tar == 1)).all():
         raise ValueError('Target data should be binary.')
     intersection = tar * prob_pred
-    dice_loss = (2 * np.sum(intersection) + epsilon) \
-        / (np.sum(prob_pred ** 2) + np.sum(tar ** 2) + epsilon)
+    intersection = np.sum(intersection)
+    m1 = np.sum(prob_pred ** 2)
+    m2 = np.sum(tar ** 2)
+    dice_loss = (2 * intersection + epsilon) / (m1 + m2 + epsilon)
     return dice_loss
 
 
@@ -43,6 +45,7 @@ def volumewise_mean_score(score_fn, pred_batch, tar_batch):
 
 
 class MetricBase:
+
     def __init__(self, pred, tar):
         if pred.shape != tar.shape:
             raise ValueError(
@@ -69,34 +72,58 @@ class MetricBase:
         return results
 
 
-class NTUMetric(MetricBase):
+class ClasswiseMetric(MetricBase):
+
     def __init__(self, pred, tar):
-        tar = to_one_hot_label(tar, pred.shape[1])
+        self.class_num = pred.shape[1]
+        self.tar_ids = tar
+        tar = to_one_hot_label(tar, self.class_num)
         super().__init__(pred, tar)
 
-        # Strip background
-        self.prob_pred = pred[:, 1:]
-        self.pred = hard_max(pred)[:, 1:]
-        self.tar = tar[:, 1:]
+        self.prob_pred = pred
+        self.pred = hard_max(pred)
+        self.tar = tar
 
-        self.do_all_metrics = {
-            'soft_dice': self.soft_dice,
-            'hard_dice': self.hard_dice,
-            'sensitivity': self.sensitivity,
-            'precision': self.precision,
+        self.metrics = {
+            'soft_dice': (soft_dice, self.prob_pred),
+            'hard_dice': (medmetric.dc, self.pred),
+            'sensitivity': (medmetric.sensitivity, self.pred),
+            'precision': (medmetric.precision, self.pred),
         }
 
-    def soft_dice(self):
-        return volumewise_mean_score(soft_dice, self.prob_pred, self.tar)
+        self.do_all_metrics = {
+            **{
+                f'{metric_name}_class{i}': partial(
+                    volumewise_mean_score,
+                    score_fn=metric_fn,
+                    pred_batch=p[:, i],
+                    tar_batch=self.tar[:, i],
+                )
+                for metric_name, (metric_fn, p) in self.metrics.items()
+                for i in range(1, self.class_num)
+            },
+            'crossentropy': partial(cross_entropy, self.prob_pred, self.tar_ids),
+        }
 
-    def hard_dice(self):
-        return volumewise_mean_score(medmetric.dc, self.pred, self.tar)
+    def all_metrics(self, verbose=True):
+        results = super(ClasswiseMetric, self).all_metrics(verbose=False)
+        accum_scores = {score_name: 0. for score_name in self.metrics.keys()}
 
-    def sensitivity(self):
-        return volumewise_mean_score(medmetric.sensitivity, self.pred, self.tar)
+        for metric_name, score in results.items():
+            for prefix in self.metrics.keys():
+                if metric_name.startswith(prefix):
+                    accum_scores[prefix] += score / self.class_num
+                    break
 
-    def precision(self):
-        return volumewise_mean_score(medmetric.precision, self.pred, self.tar)
+        new_results = {
+            **results,
+            **{f'{prefix}_overall': accum_scores[prefix] for prefix in self.metrics.keys()},
+        }
+
+        if verbose:
+            for metric, result in new_results.items():
+                print(f'{metric}: {result:.2f}')
+        return new_results
 
 
 class BRATSMetric(MetricBase):
@@ -104,73 +131,36 @@ class BRATSMetric(MetricBase):
         tar = to_one_hot_label(tar, prob_pred.shape[1])
         super().__init__(prob_pred, tar)
 
-        self.prob_pred_complete = \
+        self.pred_complete = \
             prob_pred[:, 1] + prob_pred[:, 2] + prob_pred[:, 3] + prob_pred[:, 4]
-        self.prob_pred_core = prob_pred[:, 1] + prob_pred[:, 3] + prob_pred[:, 4]
-        self.prob_pred_enhancing = prob_pred[:, 4]
-
-        pred = hard_max(prob_pred)
-        self.pred_complete = pred[:, 1] + pred[:, 2] + pred[:, 3] + pred[:, 4]
-        self.pred_core = pred[:, 1] + pred[:, 3] + pred[:, 4]
-        self.pred_enhancing = pred[:, 4]
+        self.pred_core = prob_pred[:, 1] + prob_pred[:, 3] + prob_pred[:, 4]
+        self.pred_enhancing = prob_pred[:, 4]
 
         self.tar_complete = tar[:, 1] + tar[:, 2] + tar[:, 3] + tar[:, 4]
         self.tar_core = tar[:, 1] + tar[:, 3] + tar[:, 4]
         self.tar_enhancing = tar[:, 4]
 
-        self.do_all_metrics = {
-            'soft_dice_complete': self.soft_dice_complete,
-            'soft_dice_core': self.soft_dice_core,
-            'soft_dice_enhancing': self.soft_dice_enhancing,
-
-            'hard_dice_complete': self.hard_dice_complete,
-            'hard_dice_core': self.hard_dice_core,
-            'hard_dice_enhancing': self.hard_dice_enhancing,
-
-            'precision_complete': self.precision_complete,
-            'precision_core': self.precision_core,
-            'precision_enhancing': self.precision_enhancing,
-
-            'sensitivity_complete': self.sensitivity_complete,
-            'sensitivity_core': self.sensitivity_core,
-            'sensitivity_enhancing': self.sensitivity_enhancing,
+        self.metrics = {
+            'soft_dice': soft_dice,
+            'hard_dice': medmetric.dc,
+            'sensitivity': medmetric.sensitivity,
+            'precision': medmetric.precision,
         }
-
-    def soft_dice_complete(self):
-        return volumewise_mean_score(soft_dice, self.prob_pred_complete, self.tar_complete)
-
-    def soft_dice_core(self):
-        return volumewise_mean_score(soft_dice, self.prob_pred_core, self.tar_core)
-
-    def soft_dice_enhancing(self):
-        return volumewise_mean_score(soft_dice, self.prob_pred_enhancing, self.tar_enhancing)
-
-    def hard_dice_complete(self):
-        return volumewise_mean_score(medmetric.dc, self.pred_complete, self.tar_complete)
-
-    def hard_dice_core(self):
-        return volumewise_mean_score(medmetric.dc, self.pred_core, self.tar_core)
-
-    def hard_dice_enhancing(self):
-        return volumewise_mean_score(medmetric.dc, self.pred_enhancing, self.tar_enhancing)
-
-    def precision_complete(self):
-        return volumewise_mean_score(medmetric.precision, self.pred_complete, self.tar_complete)
-
-    def precision_core(self):
-        return volumewise_mean_score(medmetric.precision, self.pred_core, self.tar_core)
-
-    def precision_enhancing(self):
-        return volumewise_mean_score(medmetric.precision, self.pred_enhancing, self.tar_enhancing)
-
-    def sensitivity_complete(self):
-        return volumewise_mean_score(medmetric.sensitivity, self.pred_complete, self.tar_complete)
-
-    def sensitivity_core(self):
-        return volumewise_mean_score(medmetric.sensitivity, self.pred_core, self.tar_core)
-
-    def sensitivity_enhancing(self):
-        return volumewise_mean_score(medmetric.sensitivity, self.pred_enhancing, self.tar_enhancing)
+        self.modes = {
+            'complete': (self.pred_complete, self.tar_complete),
+            'core': (self.pred_core, self.tar_core),
+            'enhancing': (self.pred_enhancing, self.tar_enhancing),
+        }
+        self.do_all_metrics = {
+            f'{metric_name}_{mode}': partial(
+                volumewise_mean_score,
+                score_fn=metric_fn,
+                pred_batch=p,
+                tar_batch=t,
+            )
+            for metric_name, metric_fn in self.metrics.items()
+            for mode, (p, t) in self.modes.items()
+        }
 
 
 class StructSegHaNMetric(MetricBase):
@@ -201,55 +191,41 @@ class StructSegHaNMetric(MetricBase):
     }
 
     def __init__(self, pred, tar):
-        self.tar_with_background = tar
+        self.tar_ids = tar
         tar = to_one_hot_label(tar, pred.shape[1])
         super().__init__(pred, tar)
 
-        self.prob_pred_with_background = pred
+        self.prob_pred = pred
+        self.pred = hard_max(pred)
+        self.tar = tar
 
-        # Strip background
-        self.prob_pred = pred[:, 1:]
-        self.pred = hard_max(pred)[:, 1:]
-        self.tar = tar[:, 1:]
-
-        soft_dice_metrics = {
-            f'soft_dice_{metric_name}': partial(
-                self.one_class_metric_func,
-                soft_dice,
-                self.prob_pred,
-                class_idx,
-            )
-            for class_idx, metric_name in enumerate(self.class_weights.keys())
-        }
-        hard_dice_metrics = {
-            f'hard_dice_{metric_name}': partial(
-                self.one_class_metric_func,
-                medmetric.dc,
-                self.pred,
-                class_idx,
-            )
-            for class_idx, metric_name in enumerate(self.class_weights.keys())
+        self.metrics = {
+            'soft_dice': (soft_dice, self.prob_pred),
+            'hard_dice': (medmetric.dc, self.pred),
         }
         self.do_all_metrics = {
-            **soft_dice_metrics,
-            **hard_dice_metrics,
-            'crossentropy': self.cross_entropy,
+            **{
+                f'{metric_name}_{metric_name}': partial(
+                    volumewise_mean_score,
+                    metric_fn,
+                    p[:, class_idx],
+                    self.tar[:, class_idx],
+                )
+                for metric_name, (metric_fn, p) in self.metrics.items()
+                for class_idx, metric_name in enumerate(self.class_weights.keys(), 1)
+            },
+            'crossentropy': partial(
+                cross_entropy, self.prob_pred, self.tar_ids,
+            ),
         }
-
-    def one_class_metric_func(self, metric_func, pred, class_idx):
-        return volumewise_mean_score(metric_func, pred[:, class_idx], self.tar[:, class_idx])
-
-    def cross_entropy(self):
-        return cross_entropy(self.prob_pred_with_background, self.tar_with_background)
 
     def all_metrics(self, verbose=True):
         results = super(StructSegHaNMetric, self).all_metrics(verbose=False)
         total_class_weight = sum(self.class_weights.values())
-        prefixs = ['soft_dice', 'hard_dice']
-        accum_scores = {score_name: 0. for score_name in prefixs}
+        accum_scores = {score_name: 0. for score_name in self.metrics.keys()}
 
         for metric_name, score in results.items():
-            for prefix in prefixs:
+            for prefix in self.metrics.keys():
                 if metric_name.startswith(prefix):
                     stripped_metric_name = metric_name[len(prefix) + 1:]
                     accum_scores[prefix] += \
@@ -258,7 +234,7 @@ class StructSegHaNMetric(MetricBase):
 
         new_results = {
             **results,
-            **{f'{prefix}_overall': accum_scores[prefix] for prefix in prefixs},
+            **{f'{prefix}_overall': accum_scores[prefix] for prefix in self.metrics.keys()},
         }
 
         if verbose:
