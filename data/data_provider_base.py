@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from metrics import NTUMetric
+from metrics import ClasswiseMetric
 from .wrappers import (
     AsyncDataGeneratorWrapper,
     NormalizedDataGeneratorWrapper,
@@ -10,7 +10,7 @@ from .wrappers import (
 
 class DataProviderBase(ABC):
 
-    _metric = NTUMetric
+    _metric = ClasswiseMetric
 
     def get_full_data_generator(self, **kwargs):
         return self._get_data_generator(

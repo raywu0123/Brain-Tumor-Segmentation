@@ -7,7 +7,7 @@ np.random.seed = 0
 
 from .base import DataGeneratorBase
 from .data_provider_base import DataProviderBase
-from metrics import StructSegHaNMetric, NTUMetric
+from metrics import StructSegHaNMetric, ClasswiseMetric
 
 from dotenv import load_dotenv
 
@@ -56,7 +56,7 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 152,
                 "class_num": 2,
             },
-            NTUMetric,
+            ClasswiseMetric,
         ),
         'Thoracic': (
             f"{STRUCTSEG_DIR}/Thoracic_OAR",
@@ -65,7 +65,7 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 127,
                 "class_num": 7,
             },
-            NTUMetric,
+            ClasswiseMetric,
         ),
         'Lung': (
             f"{STRUCTSEG_DIR}/Lung_GTV",
@@ -74,7 +74,7 @@ class StructSeg2019DataProvider(DataProviderBase):
                 "depth": 127,
                 "class_num": 2,
             },
-            NTUMetric,
+            ClasswiseMetric,
         ),
     }
 
