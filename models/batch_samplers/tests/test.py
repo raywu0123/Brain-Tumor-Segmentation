@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
+from utils import to_one_hot_label
 from ..two_dim import TwoDimBatchSampler
 from ..uniform_patch3d import UniformPatch3DBatchSampler
 from ..center_patch3d import CenterPatch3DBatchSampler
@@ -76,13 +77,16 @@ class Patch3DBatchSamplerTestCase(TestCase):
             )
 
             if not training:
-                mock_batch_pred_list = [label[:, np.newaxis] for label in batch_label_list]
+                mock_batch_pred_list = [
+                    to_one_hot_label(label, class_num=2)
+                    for label in batch_label_list
+                ]
                 reversed_batch_label = self.uniform_sampler.reassemble(
                     mock_batch_pred_list,
                     self.batch_data,
                 )
                 self.assertTrue(
-                    np.all(reversed_batch_label[:, 0] == self.batch_label)
+                    np.all(np.argmax(reversed_batch_label, axis=1) == self.batch_label)
                 )
 
     def test_center_reverse(self):
@@ -106,11 +110,14 @@ class Patch3DBatchSamplerTestCase(TestCase):
                 self.assertTrue(
                     np.all(reversed_batch_volume == self.batch_volume)
                 )
-                mock_batch_pred_list = [label[:, np.newaxis] for label in batch_label_list]
+                mock_batch_pred_list = [
+                    to_one_hot_label(label, class_num=2)
+                    for label in batch_label_list
+                ]
                 reversed_batch_label = self.center_sampler.reassemble(
                     mock_batch_pred_list,
                     self.batch_data,
                 )
                 self.assertTrue(
-                    np.all(reversed_batch_label[:, 0] == self.batch_label)
+                    np.all(np.argmax(reversed_batch_label, axis=1) == self.batch_label)
                 )
