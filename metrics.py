@@ -205,14 +205,14 @@ class StructSegHaNMetric(MetricBase):
         }
         self.do_all_metrics = {
             **{
-                f'{metric_name}_{metric_name}': partial(
+                f'{metric_name}_{organ_name}': partial(
                     volumewise_mean_score,
                     metric_fn,
                     p[:, class_idx],
                     self.tar[:, class_idx],
                 )
                 for metric_name, (metric_fn, p) in self.metrics.items()
-                for class_idx, metric_name in enumerate(self.class_weights.keys(), 1)
+                for class_idx, organ_name in enumerate(self.class_weights.keys(), 1)
             },
             'crossentropy': partial(
                 cross_entropy, self.prob_pred, self.tar_ids,
