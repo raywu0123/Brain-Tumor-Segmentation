@@ -164,8 +164,8 @@ def add_prediction_args(parser):
     )
     parser.add_argument(
         '--save_volume',
-        dest='save_volume',
-        action='store_true',
-        help='Runs faster if not saving volumes.',
+        type=str,
+        default=[],
+        nargs='+',
+        help='Runs faster if not saving volumes. options: [hard / soft]',
     )
-    parser.set_defaults(save_volume=False)
