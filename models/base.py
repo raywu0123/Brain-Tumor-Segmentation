@@ -25,13 +25,13 @@ class PytorchModelBase(ModelBase, nn.Module):
     def __init__(
             self,
             batch_sampler_id: str,
-            loss_function_id: str,
             data_format: dict,
-            clip_grad: float,
-            optim_batch_steps: int,
-            auxiliary_data_formats: list,
             forward_outcome_channels: int,
             head_outcome_channels: int,
+            auxiliary_data_formats: list,
+            loss_function_id: str = 'crossentropy',
+            clip_grad: float = 0.,
+            optim_batch_steps: int = 1,
     ):
         nn.Module.__init__(self)
         self.loss_fn = loss_function_hub[loss_function_id]

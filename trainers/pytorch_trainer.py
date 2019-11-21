@@ -26,9 +26,9 @@ class PytorchTrainer(TrainerBase, ABC):
     def __init__(
             self,
             model: PytorchModelBase,
-            optimizer,
-            scheduler,
             dataset_size: int,
+            optimizer=None,
+            scheduler=None,
             comet_experiment: comet_ml.Experiment = None,
             checkpoint_dir=None,
             profile: bool = False,
@@ -76,7 +76,8 @@ class PytorchTrainer(TrainerBase, ABC):
     def load(self, file_path):
         checkpoint = torch.load(os.path.join(file_path, 'checkpoint.pth.tar'))
         self.model.load_state_dict(checkpoint['state_dict'])
-        self.opt.load_state_dict(checkpoint['optimizer'])
+        if self.opt is not None:
+            self.opt.load_state_dict(checkpoint['optimizer'])
         self.i_step = checkpoint['step'] + 1
         print(f'model loaded from {file_path}')
 
@@ -143,18 +144,23 @@ class PytorchTrainer(TrainerBase, ABC):
                 print("Exit by profiler")
                 sys.exit(0)
 
-    def predict_on_generator(self, data_generator, save_base_dir, metric, save_volume, **kwargs):
-        self.prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
-        self.hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
-
+    def predict_on_generator(
+            self,
+            data_generator,
+            save_base_dir,
+            metric,
+            save_volume: str,
+            **kwargs,
+    ):
         if not os.path.exists(save_base_dir):
             os.mkdir(save_base_dir)
 
-        if save_volume:
-            if not os.path.exists(self.prob_prediction_path):
-                os.mkdir(self.prob_prediction_path)
-            if not os.path.exists(self.hard_prediction_path):
-                os.mkdir(self.hard_prediction_path)
+        self.prob_prediction_path = os.path.join(save_base_dir, f'prob_predict')
+        self.hard_prediction_path = os.path.join(save_base_dir, f'hard_predict')
+        if 'soft' in save_volume and not os.path.exists(self.prob_prediction_path):
+            os.mkdir(self.prob_prediction_path)
+        if 'hard' in save_volume and not os.path.exists(self.hard_prediction_path):
+            os.mkdir(self.hard_prediction_path)
 
         metrics_dict = {}
 
@@ -167,14 +173,13 @@ class PytorchTrainer(TrainerBase, ABC):
             metrics = metric(pred, label).all_metrics(verbose=False)
             metrics_dict[data_id] = metrics
 
-            if save_volume:
-                self._save_volume_prediction(pred, batch_data)
+            self._save_volume_prediction(pred, batch_data, save_volume)
 
         self._save_metric_predictions(metrics_dict, save_base_dir)
         print(f'prediction result saved to {save_base_dir}')
         return metrics_dict
 
-    def _save_volume_prediction(self, pred, batch_data):
+    def _save_volume_prediction(self, pred, batch_data, save_volume):
         # to [D, H, W, C] format
         pred = pred[0].transpose([2, 3, 1, 0])
         hard_pred = np.argmax(pred, axis=-1)
@@ -182,8 +187,12 @@ class PytorchTrainer(TrainerBase, ABC):
         data_id = batch_data['data_ids'][0]
         affine = batch_data['affines'][0]
 
-        save_array_to_nii(pred, os.path.join(self.prob_prediction_path, data_id), affine)
-        save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
+        if not data_id.endswith('.nii.gz'):
+            data_id = f'{data_id}.nii.gz'
+        if 'soft' in save_volume:
+            save_array_to_nii(pred, os.path.join(self.prob_prediction_path, data_id), affine)
+        if 'hard' in save_volume:
+            save_array_to_nii(hard_pred, os.path.join(self.hard_prediction_path, data_id), affine)
 
     @staticmethod
     def _save_metric_predictions(metrics_dict, save_base_dir):

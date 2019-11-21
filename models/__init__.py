@@ -49,6 +49,18 @@ ModelHub = {
             'batch_size': 20,
         },
     ),
+    'u_net_positional_HaN': (
+        partial(
+            UNet,
+            floor_num=5,
+            conv_times=3,
+            use_position=True,
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 2,
+        },
+    ),
     'u_net_positional_dropout0.1': (
         partial(
             UNet,
