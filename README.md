@@ -62,6 +62,17 @@ python postprocess.py <lable_dir> <result_dir> <image_processor_path>
 ```
 * This script will revert the resolution and copy the according headers from the original nii file.
 
+### NTU2019
+0. Directory Structure:
+```
+NTU2019
+    image
+    label
+NTU2019_result
+    image
+    mask
+```
+
 ### BRATS2015
 
 0. Directory Structure:
