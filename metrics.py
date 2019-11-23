@@ -75,7 +75,7 @@ class MetricBase:
 class ClasswiseMetric(MetricBase):
 
     def __init__(self, pred, tar):
-        self.class_num = pred.shape[1]
+        self.class_num = pred.shape[1]  # class_num includes background
         self.tar_ids = tar
         tar = to_one_hot_label(tar, self.class_num)
         super().__init__(pred, tar)
@@ -112,7 +112,7 @@ class ClasswiseMetric(MetricBase):
         for metric_name, score in results.items():
             for prefix in self.metrics.keys():
                 if metric_name.startswith(prefix):
-                    accum_scores[prefix] += score / self.class_num
+                    accum_scores[prefix] += score / (self.class_num - 1)  # minus 1 for background
                     break
 
         new_results = {
