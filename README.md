@@ -34,7 +34,7 @@ python main.py --checkpoint_dir <checkpoint_dir>
 ## 5. Prediction
 
 ```
-python main.py --checkpoint_dir <checkpoint_dir> [--predict_mode] [--save_volume]
+python predict.py --checkpoint_dir <checkpoint_dir> [--predict_mode] [--save_volume]
 ```
 
 ## Data Configuration
