@@ -4,6 +4,7 @@ from .toy_model import ToyModel
 from .u_net import UNet
 from .v_net import VNet
 from .pspnet import PSPNet
+from .high_resolution_compact_network import HighResolutionCompactNetwork
 
 DEFAULT_TRAINING_PARAM = {
     'batch_size': 50,
@@ -130,7 +131,7 @@ ModelHub = {
     'v_net_center_patch': (
         partial(
             VNet,
-            batch_sampler_id='center_patch3d',
+            batch_sampler_id='center_patch_96',
         ),
         {
             **DEFAULT_TRAINING_PARAM,
@@ -180,4 +181,12 @@ ModelHub = {
             'batch_size': 10,
         },
     ),
+    'HighRes3DNet': (
+        partial(
+            HighResolutionCompactNetwork,
+        ), {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 4,
+        }
+    )
 }
