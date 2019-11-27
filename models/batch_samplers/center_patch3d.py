@@ -10,10 +10,9 @@ from .utils import flatten
 
 class CenterPatch3DBatchSampler(BatchSamplerBase):
 
-    patch_size = np.array((152, 128, 128), dtype=int)
-
-    def __init__(self, **kwargs):
+    def __init__(self, patch_size=(64, 64, 64), **kwargs):
         super().__init__(**kwargs)
+        self.patch_size = np.array(patch_size, dtype=int)
 
     def convert_to_feedable(self, batch_data, batch_size, training=False, **kwargs):
         batch_volume = batch_data['volume']
