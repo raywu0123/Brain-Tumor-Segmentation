@@ -9,12 +9,15 @@ class HighResolutionCompactNetwork(PytorchModelBase):
     def __init__(
             self,
             data_format: dict,
-            batch_sampler_id='center_patch_96',
-            duplication_num=16,
+            batch_sampler_id='three_dim',
+            duplication_num=32,
             kernel_size=3,
+            interpolate_size=(96, 96, 96),
             **kwargs,
     ):
         self.kernel_size = kernel_size
+        self.data_format = data_format
+        self.interpolate_size = interpolate_size
         super().__init__(
             batch_sampler_id=batch_sampler_id,
             data_format=data_format,
@@ -44,6 +47,7 @@ class HighResolutionCompactNetwork(PytorchModelBase):
     def build_heads(self, input_channels: list, output_channel: int):
         return nn.ModuleList([
             nn.Sequential(
+                Interpolate(size=self.interpolate_size),
                 nn.Conv3d(
                     input_channel,
                     output_channel,
@@ -62,8 +66,17 @@ class HighResolutionCompactNetwork(PytorchModelBase):
 
     def build_tails(self, input_channels, class_nums):
         return nn.ModuleList([
-            nn.Conv3d(input_channels, class_num, kernel_size=1)
-            for class_num in class_nums
+            nn.Sequential(
+                nn.Conv3d(input_channels, class_num, kernel_size=1),
+                Interpolate(
+                    size=(
+                        data_format['depth'],
+                        data_format['height'],
+                        data_format['width'],
+                    )
+                )
+            )
+            for class_num, data_format in zip(class_nums, self.all_data_formats)
         ])
 
 
@@ -99,3 +112,13 @@ class CustomConv(nn.Module):
         for layer in self.layers:
             x = layer(x)
         return x + inp
+
+
+class Interpolate(nn.Module):
+
+    def __init__(self, size):
+        super().__init__()
+        self.size = size
+
+    def forward(self, x):
+        return nn.functional.interpolate(x, size=self.size)

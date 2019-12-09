@@ -43,14 +43,14 @@ class PytorchModelBase(ModelBase, nn.Module):
         self.batch_step_num = 0  # keeps count of how many batches processed
         self.optim_batch_steps = optim_batch_steps  # optimizer steps after this many steps
 
-        all_data_formats = [data_format] + auxiliary_data_formats
+        self.all_data_formats = [data_format] + auxiliary_data_formats
         data_channels = [
             _data_format['channels']
-            for _data_format in all_data_formats
+            for _data_format in self.all_data_formats
         ]
         class_nums = [
             _data_format['class_num']
-            for _data_format in all_data_formats
+            for _data_format in self.all_data_formats
         ]
         self.heads = self.build_heads(
             input_channels=data_channels,
