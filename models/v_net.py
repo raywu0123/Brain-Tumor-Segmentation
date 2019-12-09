@@ -123,10 +123,10 @@ class UpConv(nn.Module):
         self.dropout = nn.Dropout3d(p=dropout_rate)
         self.batch_norm = nn.BatchNorm3d(x2_channel)
         self.conv_N_time = ConvNTimes(x2_channel, kernel_size, conv_time, dropout_rate)
+        self.se_layer = SELayer(x2_channel)
 
     def forward(self, x1, x2):
         x1 = self.up_conv(x1)
-
         x1 = self.dropout(x1)
         if self.dropout.p == 0:
             x1 = self.batch_norm(x1)
@@ -142,7 +142,7 @@ class UpConv(nn.Module):
             pad = nn.ConstantPad3d((0, p_w, 0, p_h, 0, p_d), 0)
             x1 = pad(x1)
 
-        # x = torch.cat((x1, x2), 1)
+        x2 = self.se_layer(x2)
         x = x1 + x2
         x = self.conv_N_time(x)
         return x
@@ -160,6 +160,7 @@ class ConvNTimes(nn.Module):
 
         self.convs = nn.ModuleList()
         self.batchnorms = nn.ModuleList()
+        self.se_layers = nn.ModuleList()
         self.dropout = nn.Dropout3d(p=dropout_rate)
 
         for _ in range(N):
@@ -169,17 +170,20 @@ class ConvNTimes(nn.Module):
                 kernel_size=kernel_size,
                 padding=kernel_size // 2,
             )
+            se_layer = SELayer(channel_num)
             self.convs.append(conv)
             norm = nn.BatchNorm3d(channel_num)
             self.batchnorms.append(norm)
+            self.se_layers.append(se_layer)
 
     def forward(self, x):
-        for conv, batchnorm in zip(self.convs, self.batchnorms):
+        for conv, batchnorm, se_layer in zip(self.convs, self.batchnorms, self.se_layers):
             x = conv(x)
             x = self.dropout(x)
             if self.dropout.p == 0:
                 x = batchnorm(x)
             x = F.relu(x)
+            x = se_layer(x)
         return x
 
 
@@ -208,3 +212,22 @@ class Duplicate(nn.Module):
             x = self.batch_norm(x)
         x = F.relu(x)
         return x
+
+
+class SELayer(nn.Module):
+
+    def __init__(self, channel, reduction=16):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1, 1)
+        return x * y.expand_as(x)
