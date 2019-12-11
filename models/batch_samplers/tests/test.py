@@ -3,6 +3,7 @@ from unittest import TestCase
 import numpy as np
 
 from ..two_dim import TwoDimBatchSampler
+from ..two_dim_aug import TwoDimAugBatchSampler
 from ..uniform_patch3d import UniformPatch3DBatchSampler
 from ..center_patch3d import CenterPatch3DBatchSampler
 
@@ -12,15 +13,15 @@ class TwoDimBatchSamplerTestCase(TestCase):
     def setUp(self):
         self.batch_volume = np.random.random([10, 9, 8, 7, 6])
         self.batch_label = np.random.randint(2, size=[10, 8, 7, 6])
-        self.sampler = TwoDimBatchSampler(
-            data_format={
-                'channels': 9,
-                'depth': 8,
-                'height': 7,
-                'width': 6,
-                'class_num': 2,
-            }
-        )
+        data_format = {
+            'channels': 9,
+            'depth': 8,
+            'height': 7,
+            'width': 6,
+            'class_num': 2,
+        }
+        self.sampler = TwoDimBatchSampler(data_format=data_format)
+        self.aug_sampler = TwoDimAugBatchSampler(data_format=data_format)
         self.batch_size = 2
 
     def test_reverse(self):
@@ -29,9 +30,15 @@ class TwoDimBatchSamplerTestCase(TestCase):
             batch_data, batch_size=self.batch_size
         )
         reversed_batch_label = self.sampler.reassemble(batch_label_list, batch_data)
-        self.assertTrue(
-            np.all(reversed_batch_label == self.batch_label)
+        self.assertTrue(np.all(reversed_batch_label == self.batch_label))
+
+    def test_aug_reverse(self):
+        batch_data = {'volume': self.batch_volume, 'label': self.batch_label}
+        _, batch_label_list = self.aug_sampler.convert_to_feedable(
+            batch_data, batch_size=self.batch_size
         )
+        reversed_batch_label = self.aug_sampler.reassemble(batch_label_list, batch_data)
+        self.assertTrue(np.all(reversed_batch_label == self.batch_label))
 
 
 class Patch3DBatchSamplerTestCase(TestCase):

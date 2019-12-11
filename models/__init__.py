@@ -40,6 +40,16 @@ ModelHub = {
             'batch_size': 20,
         },
     ),
+    'u_net_aug': (
+        partial(
+            UNet,
+            batch_sampler_id='two_dim_aug',
+        ),
+        {
+            **DEFAULT_TRAINING_PARAM,
+            'batch_size': 25,
+        },
+    ),
     'u_net_positional': (
         partial(
             UNet,
