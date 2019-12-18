@@ -13,7 +13,7 @@ matplotlib = "*"
 sklearn = "*"
 medpy = "*"
 bistiming = "*"
-torch = "==1.2.0"
+torch = "==1.3.1"
 comet-ml = "*"
 opencv-python = "*"
 albumentations = "*"
@@ -21,6 +21,7 @@ simpleitk = "*"
 torchvision = "*"
 pandas = "*"
 pynrrd = "*"
+gitpython = "*"
 
 [dev-packages]
 

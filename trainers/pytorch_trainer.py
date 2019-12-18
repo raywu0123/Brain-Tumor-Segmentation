@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-
+import git
 
 from .base import TrainerBase
 from models.base import PytorchModelBase
@@ -37,6 +37,9 @@ class PytorchTrainer(TrainerBase, ABC):
         self.dataset_size = dataset_size
         self.opt = optimizer
         self.scheduler = scheduler
+
+        repo = git.Repo(search_parent_directories=True)
+        self.version_sha = repo.head.object.hexsha
 
         EXP_ID = os.environ.get('EXP_ID')
         self.result_path = os.path.join(RESULT_DIR_BASE, EXP_ID)
@@ -68,6 +71,7 @@ class PytorchTrainer(TrainerBase, ABC):
                 'step': self.i_step,
                 'state_dict': self.model.state_dict(),
                 'optimizer': self.opt.state_dict(),
+                'version_sha': self.version_sha,
             },
             os.path.join(self.result_path, 'checkpoint.pth.tar')
         )
@@ -75,6 +79,11 @@ class PytorchTrainer(TrainerBase, ABC):
 
     def load(self, file_path):
         checkpoint = torch.load(os.path.join(file_path, 'checkpoint.pth.tar'))
+        if self.version_sha != checkpoint.get('version_sha'):
+            print(f'Error: wrong code version, '
+                  f'checkpoint using {checkpoint["version_sha"]} '
+                  f'but currently at {self.version_sha}.')
+
         self.model.load_state_dict(checkpoint['state_dict'])
         if self.opt is not None:
             self.opt.load_state_dict(checkpoint['optimizer'])
