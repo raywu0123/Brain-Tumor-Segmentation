@@ -101,7 +101,7 @@ def main():
         model_parameters=model.parameters(),
         dataset_size=len(data_provider),
         optimizer_type=args.optimizer_type,
-        lr=args.lr,
+        lr=args.lr / args.optim_batch_steps,
         epoch_milestones=args.epoch_milestones,
         gamma=args.gamma,
     )

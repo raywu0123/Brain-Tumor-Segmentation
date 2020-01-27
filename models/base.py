@@ -103,15 +103,13 @@ class PytorchModelBase(ModelBase, nn.Module):
             batch_pred = self.forward(batch_pred)
             batch_pred = self.tails[data_idx](batch_pred)
             loss, log = self.loss_fn(batch_pred, batch_label)
-            loss /= self.optim_batch_steps
             logs[data_idx].append(log)
             loss.backward()
 
-            if self.clip_grad > 0:
-                torch.nn.utils.clip_grad_norm_(params, self.clip_grad)
-
             self.batch_step_num += 1
             if self.batch_step_num % self.optim_batch_steps == 0:
+                if self.clip_grad > 0:
+                    torch.nn.utils.clip_grad_norm_(params, self.clip_grad)
                 optimizer.step()
                 self.zero_grad()
 
