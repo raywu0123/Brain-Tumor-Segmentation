@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv('./.env')
 
 
-TCIA_CT_DIR = os.environ.get('TCIA_CT_DIR')
+TCIA_CT_DIR = os.environ.get('TCIA_CT_DIR') or ''
 TEST_DIR = os.path.join(TCIA_CT_DIR, 'nrrds', 'test')
 VAL_DIR = os.path.join(TCIA_CT_DIR, 'nrrds', 'validation')
 

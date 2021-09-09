@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-
-import numpy as np
+import random
 
 
 class DataGeneratorBase(ABC):
@@ -19,7 +18,7 @@ class DataGeneratorBase(ABC):
         data['label']: shape(N, D, H, W) with integer class labels
         """
         if self.random:
-            selected_data_ids = np.random.choice(self.data_ids, batch_size)
+            selected_data_ids = random.sample(self.data_ids, batch_size)
         else:
             selected_data_ids = self.data_ids[self.current_index: self.current_index + batch_size]
             self.current_index += batch_size

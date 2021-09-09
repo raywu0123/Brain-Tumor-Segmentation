@@ -105,7 +105,6 @@ class Brats2015DataGenerator(DataGeneratorBase):
         data_filename = [f for f in os.listdir(modal_folder_dir) if data_extension in f]
         assert(len(data_filename) == 1)
         data_dir = os.path.join(modal_folder_dir, data_filename[0])
-
         image = sitk.ReadImage(data_dir)
         image_array = sitk.GetArrayFromImage(image)
         return image_array
