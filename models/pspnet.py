@@ -58,7 +58,6 @@ class PSPNet(PytorchModelBase):
         p = self.up_3(p)
         p = self.drop_2(p)
 
-        p = self.final(p)
         return p
 
     def build_heads(self, input_channels: list, output_channel: int):

@@ -155,7 +155,7 @@ class BRATSMetric(MetricBase):
             f'{metric_name}_{mode}': partial(
                 volumewise_mean_score,
                 score_fn=metric_fn,
-                pred_batch=p,
+                pred_batch=p if metric_name == 'soft_dice' else p > 0.5,
                 tar_batch=t,
             )
             for metric_name, metric_fn in self.metrics.items()

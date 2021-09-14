@@ -131,7 +131,7 @@ ModelHub = {
     'v_net_center_patch': (
         partial(
             VNet,
-            batch_sampler_id='center_patch_96',
+            batch_sampler_id='center_patch',
         ),
         {
             **DEFAULT_TRAINING_PARAM,

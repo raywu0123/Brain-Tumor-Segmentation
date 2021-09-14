@@ -85,7 +85,7 @@ class Brats2015DataProvider(DataProviderBase):
                 label_type = t
                 break
         
-        metric = BRATSMetric if not t else ClasswiseMetric
+        metric = BRATSMetric if not label_type else ClasswiseMetric
         return label_type, metric
 
     @property
